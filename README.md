@@ -26,6 +26,7 @@ ANTON_LOGIN_CODE=DEIN-CODE npx @udondan/anton status
 | ------------------------ | ------------------------ | --------------------------------------------------------------------------- |
 | `ANTON_LOGIN_CODE`       | Ja (oder `ANTON_LOG_ID`) | Der 8-stellige Eltern-Login-Code aus der Anton-App                          |
 | `ANTON_LOG_ID`           | Alternative zu obigem    | Interne Log-ID (z. B. `L-...`)                                              |
+| `ANTON_GROUP`            | Nein                     | Wählt die Standardgruppe bei mehreren Gruppen (Groß-/Kleinschreibung egal)  |
 | `ANTON_ASSIGNMENTS_FILE` | Nein                     | Pfad zur Aufgaben-JSON-Datei (Standard: `~/.config/anton/assignments.json`) |
 | `ANTON_NO_SESSION_CACHE` | Nein                     | Auf `1` setzen, um den CLI-Session-Cache zu deaktivieren                    |
 

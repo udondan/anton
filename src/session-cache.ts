@@ -101,7 +101,7 @@ export function isGroupInfoFresh(entry: CacheEntry): boolean {
 
 /**
  * Persist a full cache entry.
- * Silently ignores write errors — caching is best-effort.
+ * Logs a warning on write errors — caching is best-effort.
  */
 export function writeCache(
   credential: string,

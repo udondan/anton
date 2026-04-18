@@ -186,11 +186,16 @@ export const getGroupEvents = (groupCode: string, since?: string) =>
  */
 async function getLoginCodeFromLogId(logId: string): Promise<string> {
   const events = await getUserEvents(logId);
+  // Pick the newest setLoginCode event — events may not be ordered newest-first.
+  let latest: { value: string; created: string } | undefined;
   for (const evt of events) {
     if (evt.event === 'setLoginCode' && typeof evt.value === 'string') {
-      return evt.value;
+      if (!latest || evt.created > latest.created) {
+        latest = { value: evt.value, created: evt.created };
+      }
     }
   }
+  if (latest) return latest.value;
   throw new Error(`No setLoginCode event found for logId ${logId}`);
 }
 
