@@ -398,7 +398,7 @@ export function getActivityTimeline(
     const curr = sortedDates[i];
     const gap = daysBetween(prev, curr);
     if (gap > 2) {
-      gaps.push({ from: prev, to: curr, days: gap });
+      gaps.push({ from: addDays(prev, 1), to: addDays(curr, -1), days: gap - 1 });
     }
   }
 

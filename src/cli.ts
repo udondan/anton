@@ -95,7 +95,7 @@ async function connectAnton(anton: Anton): Promise<void> {
   const { cache: useCache } = program.opts<{ cache: boolean }>();
   const noCache = !useCache || process.env.ANTON_NO_SESSION_CACHE === '1';
 
-  const credential = process.env.ANTON_LOGIN_CODE ?? process.env.ANTON_LOG_ID;
+  const credential = process.env.ANTON_LOGIN_CODE || process.env.ANTON_LOG_ID;
 
   if (!noCache && credential) {
     const cached = readCache(credential);

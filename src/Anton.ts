@@ -246,13 +246,16 @@ export class Anton {
     return this.allGroups[0];
   }
 
-  /** Find a child by display name within the configured group. */
+  /** Find a child by display name or publicId within the configured group. */
   private resolveChild(name: string, groupName?: string): ResolvedChild {
     const group = this.requireGroup(groupName);
-    const m = group.members.find((mem) => mem.displayName?.toLowerCase() === name.toLowerCase());
+    const key = name.toLowerCase();
+    const m = group.members.find(
+      (mem) => mem.displayName?.toLowerCase() === key || mem.publicId.toLowerCase() === key,
+    );
     if (!m) {
       throw new Error(
-        `Child "${name}" not found in group "${group.groupName}". Use listChildren() to see member names.`,
+        `Child "${name}" not found in group "${group.groupName}". Use listChildren() to see member names or public IDs.`,
       );
     }
     return {
@@ -288,9 +291,9 @@ export class Anton {
 
   private currentWeekMonday(): string {
     const now = new Date();
-    const day = now.getDay();
+    const day = now.getUTCDay();
     const diff = day === 0 ? -6 : 1 - day;
-    now.setDate(now.getDate() + diff);
+    now.setUTCDate(now.getUTCDate() + diff);
     return now.toISOString().slice(0, 10);
   }
 
@@ -403,10 +406,14 @@ export class Anton {
     if (opts.childName) {
       const childName = opts.childName;
       const match = group.members.find(
-        (m) => m.displayName?.toLowerCase() === childName.toLowerCase(),
+        (m) =>
+          m.displayName?.toLowerCase() === childName.toLowerCase() ||
+          m.publicId.toLowerCase() === childName.toLowerCase(),
       );
       if (!match) {
-        throw new Error(`Child "${opts.childName}" not found. Use getGroup() to see member names.`);
+        throw new Error(
+          `Child "${opts.childName}" not found. Use getGroup() to see member names or public IDs.`,
+        );
       }
       childPublicId = match.publicId;
     }
