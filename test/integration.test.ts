@@ -97,32 +97,56 @@ beforeAll(async () => {
   }
   if (groupCodes.length === 0) throw new Error('No family group found for the parent account');
 
-  const groupCode = groupCodes[0]!;
-  const groupEvents = await getGroupEvents(groupCode);
-  groupInfo = parseGroupInfo(groupCode, groupEvents);
-
-  // Enrich members with display names and logIds
-  const descriptions = await getGroupMemberDescriptions(
-    groupCode,
-    parentSession.logId,
-    parentSession.authToken,
+  // Fetch and enrich all groups in parallel, then pick the target group.
+  // The target is selected by ANTON_GROUP (case-insensitive) or falls back to
+  // the first group. The Test child's logId is searched across all groups
+  // because some groups may not expose it via getGroupMemberDescriptions.
+  const allGroupInfos = await Promise.all(
+    groupCodes.map(async (code) => {
+      const events = await getGroupEvents(code);
+      const info = parseGroupInfo(code, events);
+      try {
+        const descriptions = await getGroupMemberDescriptions(
+          code,
+          parentSession.logId,
+          parentSession.authToken,
+        );
+        const byPublicId = new Map(descriptions.map((d) => [d.publicId, d]));
+        for (const member of info.members) {
+          const desc = byPublicId.get(member.publicId);
+          if (desc) {
+            member.displayName = desc.displayName;
+            member.logId = desc.logId;
+          }
+        }
+      } catch {
+        // Member descriptions unavailable for this group; continue without them.
+      }
+      return info;
+    }),
   );
-  const byPublicId = new Map(descriptions.map((d) => [d.publicId, d]));
-  for (const member of groupInfo.members) {
-    const desc = byPublicId.get(member.publicId);
-    if (desc) {
-      member.displayName = desc.displayName;
-      member.logId = desc.logId;
-    }
-  }
+
+  const targetGroupName = process.env['ANTON_GROUP'];
+  groupInfo =
+    (targetGroupName
+      ? allGroupInfos.find(
+          (g) => g.groupName.toLowerCase() === targetGroupName.toLowerCase(),
+        )
+      : undefined) ?? allGroupInfos[0]!;
 
   // ── Resolve "Test" child ─────────────────────────────────────────────────
-  const testMember = groupInfo.members.find(
-    (m) => m.role === 'pupil' && m.displayName?.toLowerCase() === CHILD_NAME.toLowerCase(),
-  );
+  // Search all groups — the logId may only be available in a group where the
+  // child account is fully set up (e.g. the default Schroeder group).
+  let testMember: (typeof allGroupInfos)[0]['members'][0] | undefined;
+  for (const info of allGroupInfos) {
+    testMember = info.members.find(
+      (m) => m.role === 'pupil' && m.displayName?.toLowerCase() === CHILD_NAME.toLowerCase() && m.logId,
+    );
+    if (testMember) break;
+  }
   if (!testMember?.logId) {
     throw new Error(
-      `Child "${CHILD_NAME}" not found in the family group or is missing a logId. ` +
+      `Child "${CHILD_NAME}" not found with a logId in any group. ` +
         'Make sure a pupil named "Test" exists in the group.',
     );
   }
@@ -677,10 +701,13 @@ describe('get_activity_timeline', () => {
 
 describe('compare_children', () => {
   it('includes the Test child and returns a valid comparison', async () => {
-    const pupils = groupInfo.members.filter((m) => m.role === 'pupil' && m.logId);
+    const pupils = groupInfo.members.filter((m) => m.role === 'pupil');
     const childRows = await Promise.all(
       pupils.map(async (m) => {
-        const events = await getUserEvents(m.logId!);
+        if (!m.logId) {
+          return { name: m.displayName ?? m.publicId, finishEvents: [] as FinishLevelEvent[] };
+        }
+        const events = await getUserEvents(m.logId);
         const finishEvents = events.filter(
           (e): e is FinishLevelEvent => e.event === 'finishLevel',
         );

@@ -748,10 +748,13 @@ export class Anton {
   /** Side-by-side comparison of all children in a group. */
   async compareChildren(opts?: { groupName?: string }) {
     const group = this.requireGroup(opts?.groupName);
-    const pupils = group.members.filter((m) => m.role === 'pupil' && m.logId);
+    const pupils = group.members.filter((m) => m.role === 'pupil');
     const rows = await Promise.all(
       pupils.map(async (m) => {
-        const events = await getUserEvents(m.logId!);
+        if (!m.logId) {
+          return { name: m.displayName ?? m.publicId, finishEvents: [] as FinishLevelEvent[] };
+        }
+        const events = await getUserEvents(m.logId);
         const finishEvents = events.filter(
           (e): e is FinishLevelEvent => e.event === 'finishLevel',
         );

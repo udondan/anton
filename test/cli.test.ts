@@ -216,8 +216,8 @@ describe('CLI --group flag', () => {
   let defaultGroupName: string;
 
   beforeAll(async () => {
-    const { parsed } = await run(['groups']);
-    defaultGroupName = (parsed as Array<{ groupName: string }>)[0]!.groupName;
+    const { parsed } = await run(['group']);
+    defaultGroupName = (parsed as { groupName: string }).groupName;
   });
 
   it('--group <name> group returns same groupCode as default', async () => {

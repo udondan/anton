@@ -44,7 +44,7 @@ beforeAll(async () => {
   }
   process.env['ANTON_ASSIGNMENTS_FILE'] = TEMP_ASSIGNMENTS;
 
-  anton = new Anton({ loginCode });
+  anton = new Anton({ loginCode, groupName: process.env['ANTON_GROUP'] });
   await anton.connect();
 }, 60_000);
 
@@ -145,7 +145,7 @@ describe('Anton multi-group selection', () => {
   let defaultGroupName: string;
 
   beforeAll(() => {
-    defaultGroupName = anton.listGroups()[0]!.groupName;
+    defaultGroupName = anton.getStatus().group!.groupName;
   });
 
   it('getGroup accepts groupName and returns the same group as default', async () => {

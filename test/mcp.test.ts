@@ -529,14 +529,10 @@ describe('MCP error paths', () => {
 
 describe('MCP tools/call group parameter', () => {
   it('get_group with valid group name returns same groupCode as default', async () => {
-    const groups = await callTool('list_groups') as Array<{ groupName: string; groupCode: string }>;
-    const groupName = groups[0]!.groupName;
+    const defaultGroup = await callTool('get_group') as { groupName: string; groupCode: string };
 
-    const [named, unnamed] = await Promise.all([
-      callTool('get_group', { group: groupName }),
-      callTool('get_group'),
-    ]) as [{ groupCode: string }, { groupCode: string }];
-    expect(named.groupCode).toBe(unnamed.groupCode);
+    const named = await callTool('get_group', { group: defaultGroup.groupName }) as { groupCode: string };
+    expect(named.groupCode).toBe(defaultGroup.groupCode);
   });
 
   it('get_group with invalid group name returns isError=true', async () => {
@@ -547,11 +543,10 @@ describe('MCP tools/call group parameter', () => {
   });
 
   it('list_children with valid group name returns same count as default', async () => {
-    const groups = await callTool('list_groups') as Array<{ groupName: string }>;
-    const groupName = groups[0]!.groupName;
+    const defaultGroup = await callTool('get_group') as { groupName: string };
 
     const [named, unnamed] = await Promise.all([
-      callTool('list_children', { group: groupName }),
+      callTool('list_children', { group: defaultGroup.groupName }),
       callTool('list_children'),
     ]) as [unknown[], unknown[]];
     expect(named.length).toBe(unnamed.length);
