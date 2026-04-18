@@ -13,7 +13,6 @@
  *   npm test test/mcp.test.ts
  */
 
-import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -66,7 +65,7 @@ afterAll(async () => {
 
 async function callTool(name: string, args: Record<string, unknown> = {}): Promise<unknown> {
   const response = await client.callTool({ name, arguments: args });
-  const content = response.content as Array<{ type: string; text: string }>;
+  const content = response.content as { type: string; text: string }[];
   if (content[0]?.type !== 'text') throw new Error(`Unexpected content type: ${content[0]?.type}`);
   return JSON.parse(content[0].text);
 }
@@ -94,12 +93,30 @@ describe('MCP tools/list', () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
     const expected = [
-      'get_status', 'list_groups', 'get_group', 'get_group_assignments', 'pin_block', 'unpin_block',
-      'get_progress', 'get_events', 'get_level_progress', 'list_children',
-      'list_plans', 'list_topics', 'get_topic_blocks', 'get_plan', 'get_lesson',
-      'check_assignment_completion', 'get_weekly_summary', 'get_subject_summary',
-      'get_activity_timeline', 'compare_children',
-      'list_assignments', 'assign_lesson', 'update_assignment', 'delete_assignment',
+      'get_status',
+      'list_groups',
+      'get_group',
+      'get_group_assignments',
+      'pin_block',
+      'unpin_block',
+      'get_progress',
+      'get_events',
+      'get_level_progress',
+      'list_children',
+      'list_plans',
+      'list_topics',
+      'get_topic_blocks',
+      'get_plan',
+      'get_lesson',
+      'check_assignment_completion',
+      'get_weekly_summary',
+      'get_subject_summary',
+      'get_activity_timeline',
+      'compare_children',
+      'list_assignments',
+      'assign_lesson',
+      'update_assignment',
+      'delete_assignment',
     ];
     for (const name of expected) {
       expect(names).toContain(name);
@@ -113,7 +130,7 @@ describe('MCP tools/list', () => {
 
 describe('MCP tools/call get_status', () => {
   it('returns parent, group, totalGroups, and children', async () => {
-    const result = await callTool('get_status') as {
+    const result = (await callTool('get_status')) as {
       parent: { logId: string; displayName: string };
       group: { groupCode: string };
       totalGroups: number;
@@ -130,11 +147,11 @@ describe('MCP tools/call get_status', () => {
 
 describe('MCP tools/call list_groups', () => {
   it('returns at least one group with members', async () => {
-    const groups = await callTool('list_groups') as Array<{
+    const groups = (await callTool('list_groups')) as {
       groupCode: string;
       groupName: string;
-      members: Array<{ publicId: string; role: string }>;
-    }>;
+      members: { publicId: string; role: string }[];
+    }[];
     expect(Array.isArray(groups)).toBe(true);
     expect(groups.length).toBeGreaterThan(0);
     expect(groups[0]!.groupCode).toBeTruthy();
@@ -148,7 +165,10 @@ describe('MCP tools/call list_groups', () => {
 
 describe('MCP tools/call list_children', () => {
   it('returns at least one child including Test', async () => {
-    const children = await callTool('list_children') as Array<{ displayName?: string; publicId: string }>;
+    const children = (await callTool('list_children')) as {
+      displayName?: string;
+      publicId: string;
+    }[];
     expect(children.length).toBeGreaterThan(0);
     const test = children.find((c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase());
     expect(test).toBeDefined();
@@ -158,12 +178,12 @@ describe('MCP tools/call list_children', () => {
 
 describe('MCP tools/call list_plans', () => {
   it('returns plans without filters', async () => {
-    const plans = await callTool('list_plans') as unknown[];
+    const plans = (await callTool('list_plans')) as unknown[];
     expect(plans.length).toBeGreaterThan(50);
   });
 
   it('can filter by subject', async () => {
-    const plans = await callTool('list_plans', { subject: 'mat' }) as Array<{ subject: string }>;
+    const plans = (await callTool('list_plans', { subject: 'mat' })) as { subject: string }[];
     expect(plans.length).toBeGreaterThan(0);
     for (const p of plans) {
       expect(p.subject?.toLowerCase()).toContain('mat');
@@ -171,7 +191,7 @@ describe('MCP tools/call list_plans', () => {
   });
 
   it('can filter by grade', async () => {
-    const plans = await callTool('list_plans', { grade: 4 }) as Array<{ grades: number[] }>;
+    const plans = (await callTool('list_plans', { grade: 4 })) as { grades: number[] }[];
     expect(plans.length).toBeGreaterThan(0);
     for (const p of plans) {
       expect(p.grades).toContain(4);
@@ -179,14 +199,14 @@ describe('MCP tools/call list_plans', () => {
   });
 
   it('can filter by language', async () => {
-    const plans = await callTool('list_plans', { language: 'de' }) as unknown[];
+    const plans = (await callTool('list_plans', { language: 'de' })) as unknown[];
     expect(plans.length).toBeGreaterThan(50);
   });
 });
 
 describe('MCP tools/call get_progress', () => {
   it('returns a progress summary for the Test child', async () => {
-    const result = await callTool('get_progress', { childName: CHILD_NAME }) as {
+    const result = (await callTool('get_progress', { childName: CHILD_NAME })) as {
       logId: string;
       totalEvents: number;
       completedLevels: unknown[];
@@ -199,9 +219,9 @@ describe('MCP tools/call get_progress', () => {
 
 describe('MCP tools/call list_topics', () => {
   it('returns topics for c-mat-4', async () => {
-    const result = await callTool('list_topics', { project: 'c-mat-4' }) as {
+    const result = (await callTool('list_topics', { project: 'c-mat-4' })) as {
       project: string;
-      topics: Array<{ title: string }>;
+      topics: { title: string }[];
     };
     expect(result.project).toBe('c-mat-4');
     expect(result.topics.length).toBeGreaterThan(0);
@@ -214,7 +234,7 @@ describe('MCP tools/call list_topics', () => {
 
 describe('MCP tools/call get_group', () => {
   it('returns group info with members and pinnedBlocks', async () => {
-    const result = await callTool('get_group') as {
+    const result = (await callTool('get_group')) as {
       groupCode: string;
       members: unknown[];
       pinnedBlocks: unknown[];
@@ -231,9 +251,9 @@ describe('MCP tools/call get_group', () => {
 
 describe('MCP tools/call get_topic_blocks', () => {
   it('returns blocks for topic index 0 of c-mat-4', async () => {
-    const result = await callTool('get_topic_blocks', { project: 'c-mat-4', topicIndex: 0 }) as {
+    const result = (await callTool('get_topic_blocks', { project: 'c-mat-4', topicIndex: 0 })) as {
       project: string;
-      blocks: Array<{ puid: string; blockPath: string; levels: unknown[] }>;
+      blocks: { puid: string; blockPath: string; levels: unknown[] }[];
     };
     expect(result.project).toBe('c-mat-4');
     expect(result.blocks.length).toBeGreaterThan(0);
@@ -241,23 +261,23 @@ describe('MCP tools/call get_topic_blocks', () => {
   });
 
   it('returns blocks for topic found by title', async () => {
-    const topicsResult = await callTool('list_topics', { project: 'c-mat-4' }) as {
-      topics: Array<{ title: string }>;
+    const topicsResult = (await callTool('list_topics', { project: 'c-mat-4' })) as {
+      topics: { title: string }[];
     };
     const firstTitle = topicsResult.topics[0]!.title;
-    const result = await callTool('get_topic_blocks', {
+    const result = (await callTool('get_topic_blocks', {
       project: 'c-mat-4',
       topicTitle: firstTitle.slice(0, 8),
-    }) as { blocks: Array<{ puid: string }> };
+    })) as { blocks: { puid: string }[] };
     expect(result.blocks.length).toBeGreaterThan(0);
   });
 });
 
 describe('MCP tools/call get_plan', () => {
   it('returns the full hierarchy for c-mat-4', async () => {
-    const result = await callTool('get_plan', { project: 'c-mat-4' }) as {
+    const result = (await callTool('get_plan', { project: 'c-mat-4' })) as {
       project: string;
-      topics: Array<{ title: string; blocks: unknown[] }>;
+      topics: { title: string; blocks: unknown[] }[];
     };
     expect(result.project).toBe('c-mat-4');
     expect(result.topics.length).toBeGreaterThan(0);
@@ -270,8 +290,11 @@ describe('MCP tools/call get_plan', () => {
 
 describe('MCP tools/call get_lesson', () => {
   it('returns lesson content for a real level fileId', async () => {
-    const topicResult = await callTool('get_topic_blocks', { project: 'c-mat-4', topicIndex: 0 }) as {
-      blocks: Array<{ levels: Array<{ fileId?: string }> }>;
+    const topicResult = (await callTool('get_topic_blocks', {
+      project: 'c-mat-4',
+      topicIndex: 0,
+    })) as {
+      blocks: { levels: { fileId?: string }[] }[];
     };
     const level = topicResult.blocks[0]!.levels.find((lv) => lv.fileId);
     expect(level).toBeDefined();
@@ -286,27 +309,30 @@ describe('MCP tools/call get_lesson', () => {
 
 describe('MCP tools/call get_events', () => {
   it('returns raw events for the Test child', async () => {
-    const events = await callTool('get_events', { childName: CHILD_NAME, limit: 10 }) as unknown[];
+    const events = (await callTool('get_events', {
+      childName: CHILD_NAME,
+      limit: 10,
+    })) as unknown[];
     expect(Array.isArray(events)).toBe(true);
     expect(events.length).toBeLessThanOrEqual(10);
   });
 
   it('can filter by event type', async () => {
-    const events = await callTool('get_events', {
+    const events = (await callTool('get_events', {
       childName: CHILD_NAME,
       eventType: 'finishLevel',
       limit: 5,
-    }) as Array<{ event: string }>;
+    })) as { event: string }[];
     for (const e of events) {
       expect(e.event).toBe('finishLevel');
     }
   });
 
   it('returns empty array when since is in the far future', async () => {
-    const events = await callTool('get_events', {
+    const events = (await callTool('get_events', {
       childName: CHILD_NAME,
       since: '2099-01-01',
-    }) as unknown[];
+    })) as unknown[];
     expect(events).toHaveLength(0);
   });
 });
@@ -317,11 +343,17 @@ describe('MCP tools/call get_events', () => {
 
 describe('MCP tools/call get_level_progress', () => {
   it('returns level progress for the Test child', async () => {
-    const topicResult = await callTool('get_topic_blocks', { project: 'c-mat-4', topicIndex: 0 }) as {
-      blocks: Array<{ puid: string }>;
+    const topicResult = (await callTool('get_topic_blocks', {
+      project: 'c-mat-4',
+      topicIndex: 0,
+    })) as {
+      blocks: { puid: string }[];
     };
     const blockPuid = topicResult.blocks[0]!.puid;
-    const result = await callTool('get_level_progress', { levelPuid: blockPuid, childName: CHILD_NAME });
+    const result = await callTool('get_level_progress', {
+      levelPuid: blockPuid,
+      childName: CHILD_NAME,
+    });
     expect(result).toBeDefined();
   }, 30_000);
 });
@@ -332,7 +364,7 @@ describe('MCP tools/call get_level_progress', () => {
 
 describe('MCP tools/call check_assignment_completion', () => {
   it('returns a completion report for the Test child', async () => {
-    const result = await callTool('check_assignment_completion', { childName: CHILD_NAME }) as {
+    const result = (await callTool('check_assignment_completion', { childName: CHILD_NAME })) as {
       childName: string;
       assignments: unknown[];
     };
@@ -341,10 +373,10 @@ describe('MCP tools/call check_assignment_completion', () => {
   });
 
   it('filtered to a far-future week returns empty assignments', async () => {
-    const result = await callTool('check_assignment_completion', {
+    const result = (await callTool('check_assignment_completion', {
       childName: CHILD_NAME,
       week: '2099-01-01',
-    }) as { assignments: unknown[] };
+    })) as { assignments: unknown[] };
     expect(result.assignments).toHaveLength(0);
   }, 30_000);
 });
@@ -355,10 +387,10 @@ describe('MCP tools/call check_assignment_completion', () => {
 
 describe('MCP tools/call get_weekly_summary', () => {
   it('returns a weekly summary for the Test child', async () => {
-    const result = await callTool('get_weekly_summary', {
+    const result = (await callTool('get_weekly_summary', {
       childName: CHILD_NAME,
       weekStartAt: '2025-01-06',
-    }) as {
+    })) as {
       childName: string;
       weekStartAt: string;
       levelsCompleted: number;
@@ -371,7 +403,7 @@ describe('MCP tools/call get_weekly_summary', () => {
   }, 30_000);
 
   it('defaults weekStartAt to the current Monday when omitted', async () => {
-    const result = await callTool('get_weekly_summary', { childName: CHILD_NAME }) as {
+    const result = (await callTool('get_weekly_summary', { childName: CHILD_NAME })) as {
       weekStartAt: string;
     };
     expect(result.weekStartAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -386,7 +418,7 @@ describe('MCP tools/call get_weekly_summary', () => {
 
 describe('MCP tools/call get_subject_summary', () => {
   it('returns per-subject stats for the Test child', async () => {
-    const result = await callTool('get_subject_summary', { childName: CHILD_NAME }) as {
+    const result = (await callTool('get_subject_summary', { childName: CHILD_NAME })) as {
       childName: string;
       subjects: unknown[];
     };
@@ -401,10 +433,10 @@ describe('MCP tools/call get_subject_summary', () => {
 
 describe('MCP tools/call get_activity_timeline', () => {
   it('returns an activity timeline for the Test child', async () => {
-    const result = await callTool('get_activity_timeline', {
+    const result = (await callTool('get_activity_timeline', {
       childName: CHILD_NAME,
       since: '2025-01-01',
-    }) as {
+    })) as {
       childName: string;
       activeDays: number;
       dailyActivity: unknown[];
@@ -421,8 +453,8 @@ describe('MCP tools/call get_activity_timeline', () => {
 
 describe('MCP tools/call compare_children', () => {
   it('returns a side-by-side comparison of all children', async () => {
-    const result = await callTool('compare_children') as {
-      children: Array<{ childName: string; totalStars: number }>;
+    const result = (await callTool('compare_children')) as {
+      children: { childName: string; totalStars: number }[];
     };
     expect(Array.isArray(result.children)).toBe(true);
     expect(result.children.length).toBeGreaterThan(0);
@@ -441,32 +473,38 @@ describe('MCP tools/call local assignments CRUD', () => {
     const FILE_ID = 'c-mat-4/topic-01/block-01/level-01';
 
     // Create
-    const created = await callTool('assign_lesson', {
+    const created = (await callTool('assign_lesson', {
       childName: CHILD_NAME,
       fileId: FILE_ID,
       lessonTitle: 'MCP Test Level',
-    }) as { id: string; status: string };
+    })) as { id: string; status: string };
     expect(created.id).toBeTruthy();
     expect(created.status).toBe('pending');
 
     // List — should include our entry
-    const list = await callTool('list_assignments', { childName: CHILD_NAME }) as Array<{ id: string }>;
+    const list = (await callTool('list_assignments', { childName: CHILD_NAME })) as {
+      id: string;
+    }[];
     expect(list.some((a) => a.id === created.id)).toBe(true);
 
     // Update status
-    const updated = await callTool('update_assignment', {
+    const updated = (await callTool('update_assignment', {
       id: created.id,
       status: 'completed',
-    }) as { id: string; status: string };
+    })) as { id: string; status: string };
     expect(updated.id).toBe(created.id);
     expect(updated.status).toBe('completed');
 
     // Delete
-    const deleted = await callTool('delete_assignment', { id: created.id }) as { deleted: boolean };
+    const deleted = (await callTool('delete_assignment', { id: created.id })) as {
+      deleted: boolean;
+    };
     expect(deleted.deleted).toBe(true);
 
     // Verify gone
-    const after = await callTool('list_assignments', { childName: CHILD_NAME }) as Array<{ id: string }>;
+    const after = (await callTool('list_assignments', { childName: CHILD_NAME })) as {
+      id: string;
+    }[];
     expect(after.some((a) => a.id === created.id)).toBe(false);
   });
 });
@@ -477,16 +515,22 @@ describe('MCP tools/call local assignments CRUD', () => {
 
 describe('MCP error paths', () => {
   it('get_events with unknown child name returns isError=true', async () => {
-    const response = await client.callTool({ name: 'get_events', arguments: { childName: 'NoSuchChildXYZ' } });
+    const response = await client.callTool({
+      name: 'get_events',
+      arguments: { childName: 'NoSuchChildXYZ' },
+    });
     expect(response.isError).toBe(true);
-    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    const text = (response.content as { text: string }[])[0]!.text;
     expect(text).toMatch(/not found/i);
   });
 
   it('get_topic_blocks with out-of-range topicIndex returns isError=true', async () => {
-    const response = await client.callTool({ name: 'get_topic_blocks', arguments: { project: 'c-mat-4', topicIndex: 9999 } });
+    const response = await client.callTool({
+      name: 'get_topic_blocks',
+      arguments: { project: 'c-mat-4', topicIndex: 9999 },
+    });
     expect(response.isError).toBe(true);
-    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    const text = (response.content as { text: string }[])[0]!.text;
     expect(text).toMatch(/out of range/i);
   });
 
@@ -501,14 +545,17 @@ describe('MCP error paths', () => {
       arguments: { blockPuid: 'nonexistent/puid', weekStartAt: '2099-01-01' },
     });
     expect(response.isError).toBe(true);
-    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    const text = (response.content as { text: string }[])[0]!.text;
     expect(text).toMatch(/no pin found/i);
   }, 15_000);
 
   it('get_level_progress with no child param returns isError=true', async () => {
-    const response = await client.callTool({ name: 'get_level_progress', arguments: { levelPuid: 'c-mat-4/xxxxx' } });
+    const response = await client.callTool({
+      name: 'get_level_progress',
+      arguments: { levelPuid: 'c-mat-4/xxxxx' },
+    });
     expect(response.isError).toBe(true);
-    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    const text = (response.content as { text: string }[])[0]!.text;
     expect(text).toMatch(/provide childName or childPublicId/i);
   });
 
@@ -518,7 +565,7 @@ describe('MCP error paths', () => {
       arguments: { id: '00000000-0000-0000-0000-000000000000', status: 'completed' },
     });
     expect(response.isError).toBe(true);
-    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    const text = (response.content as { text: string }[])[0]!.text;
     expect(text).toMatch(/not found/i);
   });
 });
@@ -529,26 +576,31 @@ describe('MCP error paths', () => {
 
 describe('MCP tools/call group parameter', () => {
   it('get_group with valid group name returns same groupCode as default', async () => {
-    const defaultGroup = await callTool('get_group') as { groupName: string; groupCode: string };
+    const defaultGroup = (await callTool('get_group')) as { groupName: string; groupCode: string };
 
-    const named = await callTool('get_group', { group: defaultGroup.groupName }) as { groupCode: string };
+    const named = (await callTool('get_group', { group: defaultGroup.groupName })) as {
+      groupCode: string;
+    };
     expect(named.groupCode).toBe(defaultGroup.groupCode);
   });
 
   it('get_group with invalid group name returns isError=true', async () => {
-    const response = await client.callTool({ name: 'get_group', arguments: { group: 'NoSuchGroupXYZ' } });
+    const response = await client.callTool({
+      name: 'get_group',
+      arguments: { group: 'NoSuchGroupXYZ' },
+    });
     expect(response.isError).toBe(true);
-    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    const text = (response.content as { text: string }[])[0]!.text;
     expect(text).toMatch(/not found/i);
   });
 
   it('list_children with valid group name returns same count as default', async () => {
-    const defaultGroup = await callTool('get_group') as { groupName: string };
+    const defaultGroup = (await callTool('get_group')) as { groupName: string };
 
-    const [named, unnamed] = await Promise.all([
+    const [named, unnamed] = (await Promise.all([
       callTool('list_children', { group: defaultGroup.groupName }),
       callTool('list_children'),
-    ]) as [unknown[], unknown[]];
+    ])) as [unknown[], unknown[]];
     expect(named.length).toBe(unnamed.length);
   });
 }, 30_000);
@@ -563,11 +615,11 @@ describe('MCP family group (groupType === "family")', () => {
   let familyChildName: string | undefined;
 
   beforeAll(async () => {
-    const groups = await callTool('list_groups') as Array<{
+    const groups = (await callTool('list_groups')) as {
       groupType: string;
       groupName: string;
-      members: Array<{ role: string; logId?: string; displayName?: string; publicId: string }>;
-    }>;
+      members: { role: string; logId?: string; displayName?: string; publicId: string }[];
+    }[];
     const familyGroup = groups.find((g) => g.groupType === 'family');
     if (!familyGroup) return;
     familyGroupName = familyGroup.groupName;
@@ -577,11 +629,11 @@ describe('MCP family group (groupType === "family")', () => {
 
   it('list_children with family group returns a child with logId', async () => {
     if (!familyGroupName) return;
-    const children = await callTool('list_children', { group: familyGroupName }) as Array<{
+    const children = (await callTool('list_children', { group: familyGroupName })) as {
       displayName?: string;
       publicId: string;
       logId?: string;
-    }>;
+    }[];
     const withLogId = children.find((c) => c.logId);
     expect(withLogId).toBeDefined();
     expect(withLogId!.logId).toBeTruthy();
@@ -589,18 +641,18 @@ describe('MCP family group (groupType === "family")', () => {
 
   it('get_progress with family group returns logId and totalEvents > 0', async () => {
     if (!familyGroupName || !familyChildName) return;
-    const result = await callTool('get_progress', {
+    const result = (await callTool('get_progress', {
       childName: familyChildName,
       group: familyGroupName,
-    }) as { logId: string; totalEvents: number };
+    })) as { logId: string; totalEvents: number };
     expect(result.logId).toBeTruthy();
     expect(result.totalEvents).toBeGreaterThan(0);
   }, 30_000);
 
   it('compare_children with family group returns real data', async () => {
     if (!familyGroupName || !familyChildName) return;
-    const result = await callTool('compare_children', { group: familyGroupName }) as {
-      children: Array<{ childName: string; levelsCompleted: number }>;
+    const result = (await callTool('compare_children', { group: familyGroupName })) as {
+      children: { childName: string; levelsCompleted: number }[];
     };
     expect(result.children.length).toBeGreaterThan(0);
     const found = result.children.find(
@@ -621,76 +673,89 @@ describe('MCP family group (groupType === "family")', () => {
 describe('MCP tools/call pin_block / unpin_block', () => {
   it('pins a block for the Test child then unpins it', async () => {
     // Resolve the Test child publicId
-    const children = await callTool('list_children') as Array<{ displayName?: string; publicId: string }>;
-    const testChild = children.find((c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase())!;
+    const children = (await callTool('list_children')) as {
+      displayName?: string;
+      publicId: string;
+    }[];
+    const testChild = children.find(
+      (c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase(),
+    )!;
     expect(testChild).toBeDefined();
 
     // Resolve a real block puid from the catalogue
-    const topicResult = await callTool('get_topic_blocks', { project: 'c-mat-4', topicIndex: 0 }) as {
-      blocks: Array<{ puid: string; blockPath: string }>;
+    const topicResult = (await callTool('get_topic_blocks', {
+      project: 'c-mat-4',
+      topicIndex: 0,
+    })) as {
+      blocks: { puid: string; blockPath: string }[];
     };
     const block = topicResult.blocks[0]!;
 
     // Pin for the Test child in the far-future week
-    const pinResult = await callTool('pin_block', {
+    const pinResult = (await callTool('pin_block', {
       project: 'c-mat-4',
       topicIndex: 0,
       blockIndex: 0,
       weekStartAt: FAR_FUTURE_WEEK,
       childName: CHILD_NAME,
-    }) as { pinned: boolean; blockPuid: string; weekStartAt: string };
+    })) as { pinned: boolean; blockPuid: string; weekStartAt: string };
     expect(pinResult.pinned).toBe(true);
     expect(pinResult.blockPuid).toBe(block.puid);
     expect(pinResult.weekStartAt).toBe(FAR_FUTURE_WEEK);
 
     // Verify the pin appears in group assignments
-    const assignments = await callTool('get_group_assignments', {
+    const assignments = (await callTool('get_group_assignments', {
       week: FAR_FUTURE_WEEK,
       childPublicId: testChild.publicId,
-    }) as Array<{ puid: string; weekStartAt: string }>;
+    })) as { puid: string; weekStartAt: string }[];
     const ourPin = assignments.find(
       (a) => a.puid === block.puid && a.weekStartAt === FAR_FUTURE_WEEK,
     );
     expect(ourPin).toBeDefined();
 
     // Unpin and verify it is gone
-    const unpinResult = await callTool('unpin_block', {
+    const unpinResult = (await callTool('unpin_block', {
       blockPuid: block.puid,
       weekStartAt: FAR_FUTURE_WEEK,
-    }) as { unpinned: boolean };
+    })) as { unpinned: boolean };
     expect(unpinResult.unpinned).toBe(true);
 
-    const after = await callTool('get_group_assignments', {
+    const after = (await callTool('get_group_assignments', {
       week: FAR_FUTURE_WEEK,
       childPublicId: testChild.publicId,
-    }) as Array<{ puid: string; weekStartAt: string }>;
-    expect(after.find((a) => a.puid === block.puid && a.weekStartAt === FAR_FUTURE_WEEK)).toBeUndefined();
+    })) as { puid: string; weekStartAt: string }[];
+    expect(
+      after.find((a) => a.puid === block.puid && a.weekStartAt === FAR_FUTURE_WEEK),
+    ).toBeUndefined();
   }, 60_000);
 
   it('pins by topicTitle and blockTitle then unpins', async () => {
-    const topicsResult = await callTool('list_topics', { project: 'c-mat-4' }) as {
-      topics: Array<{ title: string }>;
+    const topicsResult = (await callTool('list_topics', { project: 'c-mat-4' })) as {
+      topics: { title: string }[];
     };
     const firstTopicTitle = topicsResult.topics[0]!.title;
-    const blocksResult = await callTool('get_topic_blocks', { project: 'c-mat-4', topicIndex: 0 }) as {
-      blocks: Array<{ puid: string; title: string }>;
+    const blocksResult = (await callTool('get_topic_blocks', {
+      project: 'c-mat-4',
+      topicIndex: 0,
+    })) as {
+      blocks: { puid: string; title: string }[];
     };
     const firstBlockTitle = blocksResult.blocks[0]!.title;
 
-    const pinResult = await callTool('pin_block', {
+    const pinResult = (await callTool('pin_block', {
       project: 'c-mat-4',
       topicTitle: firstTopicTitle.slice(0, 8),
       blockTitle: firstBlockTitle.slice(0, 8),
       weekStartAt: '2099-08-04',
       childName: CHILD_NAME,
-    }) as { pinned: boolean; blockPuid: string };
+    })) as { pinned: boolean; blockPuid: string };
     expect(pinResult.pinned).toBe(true);
     expect(pinResult.blockPuid).toBe(blocksResult.blocks[0]!.puid);
 
-    const unpinResult = await callTool('unpin_block', {
+    const unpinResult = (await callTool('unpin_block', {
       blockPuid: pinResult.blockPuid,
       weekStartAt: '2099-08-04',
-    }) as { unpinned: boolean };
+    })) as { unpinned: boolean };
     expect(unpinResult.unpinned).toBe(true);
   }, 60_000);
 });

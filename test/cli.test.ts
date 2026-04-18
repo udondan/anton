@@ -93,15 +93,20 @@ describe('CLI pin / unpin', () => {
   it('pins a block for the Test child then unpins it', async () => {
     // Resolve a real block puid from the catalogue so we can verify the result
     const { parsed: blocksResult } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
-    const block = (blocksResult as { blocks: Array<{ puid: string }> }).blocks[0]!;
+    const block = (blocksResult as { blocks: { puid: string }[] }).blocks[0]!;
 
     // Pin and verify the response
     const { parsed: pinResult } = await run([
-      'pin', 'c-mat-4',
-      '--topic-index', '0',
-      '--block-index', '0',
-      '--week', FAR_FUTURE_WEEK,
-      '--child', CHILD_NAME,
+      'pin',
+      'c-mat-4',
+      '--topic-index',
+      '0',
+      '--block-index',
+      '0',
+      '--week',
+      FAR_FUTURE_WEEK,
+      '--child',
+      CHILD_NAME,
     ]);
     const pin = pinResult as { pinned: boolean; blockPuid: string; weekStartAt: string };
     expect(pin.pinned).toBe(true);
@@ -154,7 +159,7 @@ describe('CLI completion', () => {
 describe('CLI compare', () => {
   it('returns a side-by-side comparison of all children', async () => {
     const { parsed } = await run(['compare']);
-    const result = parsed as { children: Array<{ childName: string; totalStars: number }> };
+    const result = parsed as { children: { childName: string; totalStars: number }[] };
     expect(Array.isArray(result.children)).toBe(true);
     expect(result.children.length).toBeGreaterThan(0);
     expect(result.children[0]!.childName).toBeTruthy();
@@ -198,7 +203,7 @@ describe('CLI status', () => {
 describe('CLI groups', () => {
   it('lists all groups with members', async () => {
     const { parsed } = await run(['groups']);
-    const groups = parsed as Array<{ groupCode: string; groupName: string; members: unknown[] }>;
+    const groups = parsed as { groupCode: string; groupName: string; members: unknown[] }[];
     expect(Array.isArray(groups)).toBe(true);
     expect(groups.length).toBeGreaterThan(0);
     expect(groups[0]!.groupCode).toBeTruthy();
@@ -248,9 +253,9 @@ describe('CLI --group flag', () => {
   });
 
   it('ANTON_GROUP with invalid name exits non-zero', async () => {
-    await expect(
-      run(['group'], { ...ENV, ANTON_GROUP: 'NoSuchGroupXYZ' }),
-    ).rejects.toMatchObject({ code: 1 });
+    await expect(run(['group'], { ...ENV, ANTON_GROUP: 'NoSuchGroupXYZ' })).rejects.toMatchObject({
+      code: 1,
+    });
   });
 }, 60_000);
 
@@ -275,7 +280,7 @@ describe('CLI group', () => {
 describe('CLI children', () => {
   it('returns an array of children with publicId', async () => {
     const { parsed } = await run(['children']);
-    const children = parsed as Array<{ displayName?: string; publicId: string }>;
+    const children = parsed as { displayName?: string; publicId: string }[];
     expect(Array.isArray(children)).toBe(true);
     expect(children.length).toBeGreaterThan(0);
     for (const c of children) {
@@ -285,7 +290,7 @@ describe('CLI children', () => {
 
   it('includes the Test child', async () => {
     const { parsed } = await run(['children']);
-    const children = parsed as Array<{ displayName?: string }>;
+    const children = parsed as { displayName?: string }[];
     const test = children.find((c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase());
     expect(test).toBeDefined();
   });
@@ -347,7 +352,7 @@ describe('CLI events', () => {
 
   it('--type finishLevel returns only finishLevel events', async () => {
     const { parsed } = await run(['events', CHILD_NAME, '--type', 'finishLevel', '-n', '5']);
-    const events = parsed as Array<{ event: string }>;
+    const events = parsed as { event: string }[];
     for (const e of events) {
       expect(e.event).toBe('finishLevel');
     }
@@ -389,7 +394,7 @@ describe('CLI level-progress', () => {
   it('returns level progress data for the Test child', async () => {
     // Get a real block puid from the catalogue
     const { parsed: topicResult } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
-    const blocks = (topicResult as { blocks: Array<{ puid: string }> }).blocks;
+    const blocks = (topicResult as { blocks: { puid: string }[] }).blocks;
     const levelPuid = blocks[0]!.puid;
 
     const { parsed } = await run(['level-progress', levelPuid, CHILD_NAME]);
@@ -415,7 +420,7 @@ describe('CLI plans', () => {
 
   it('--subject mat returns only maths plans', async () => {
     const { parsed } = await run(['plans', '--subject', 'mat']);
-    const plans = parsed as Array<{ subject: string }>;
+    const plans = parsed as { subject: string }[];
     expect(plans.length).toBeGreaterThan(0);
     for (const p of plans) {
       expect(p.subject.toLowerCase()).toContain('mat');
@@ -424,7 +429,7 @@ describe('CLI plans', () => {
 
   it('--grade 4 returns plans that include grade 4', async () => {
     const { parsed } = await run(['plans', '--grade', '4']);
-    const plans = parsed as Array<{ grades: number[] }>;
+    const plans = parsed as { grades: number[] }[];
     expect(plans.length).toBeGreaterThan(0);
     for (const p of plans) {
       expect(p.grades).toContain(4);
@@ -439,7 +444,7 @@ describe('CLI plans', () => {
 describe('CLI topics', () => {
   it('returns topics for c-mat-4', async () => {
     const { parsed } = await run(['topics', 'c-mat-4']);
-    const result = parsed as { project: string; topics: Array<{ index: number; title: string }> };
+    const result = parsed as { project: string; topics: { index: number; title: string }[] };
     expect(result.project).toBe('c-mat-4');
     expect(result.topics.length).toBeGreaterThan(0);
     expect(typeof result.topics[0]!.index).toBe('number');
@@ -454,7 +459,10 @@ describe('CLI topics', () => {
 describe('CLI blocks', () => {
   it('returns blocks for topic index 0 of c-mat-4', async () => {
     const { parsed } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
-    const result = parsed as { project: string; blocks: Array<{ puid: string; blockPath: string }> };
+    const result = parsed as {
+      project: string;
+      blocks: { puid: string; blockPath: string }[];
+    };
     expect(result.project).toBe('c-mat-4');
     expect(result.blocks.length).toBeGreaterThan(0);
     expect(result.blocks[0]!.puid).toBeTruthy();
@@ -469,7 +477,7 @@ describe('CLI blocks', () => {
 describe('CLI plan', () => {
   it('returns the full hierarchy for c-mat-4', async () => {
     const { parsed } = await run(['plan', 'c-mat-4']);
-    const result = parsed as { project: string; topics: Array<{ title: string }> };
+    const result = parsed as { project: string; topics: { title: string }[] };
     expect(result.project).toBe('c-mat-4');
     expect(result.topics.length).toBeGreaterThan(0);
   });
@@ -482,7 +490,7 @@ describe('CLI plan', () => {
 describe('CLI lesson', () => {
   it('returns lesson content for a real level fileId', async () => {
     const { parsed: topicResult } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
-    const blocks = (topicResult as { blocks: Array<{ levels: Array<{ fileId?: string }> }> }).blocks;
+    const blocks = (topicResult as { blocks: { levels: { fileId?: string }[] }[] }).blocks;
     const level = blocks[0]!.levels.find((lv) => lv.fileId);
     expect(level).toBeDefined();
 
@@ -502,11 +510,11 @@ describe('CLI family group (groupType === "family")', () => {
 
   beforeAll(async () => {
     const { parsed } = await run(['groups']);
-    const groups = parsed as Array<{
+    const groups = parsed as {
       groupType: string;
       groupName: string;
-      members: Array<{ role: string; logId?: string; displayName?: string; publicId: string }>;
-    }>;
+      members: { role: string; logId?: string; displayName?: string; publicId: string }[];
+    }[];
     const familyGroup = groups.find((g) => g.groupType === 'family');
     if (!familyGroup) return;
     familyGroupName = familyGroup.groupName;
@@ -517,7 +525,7 @@ describe('CLI family group (groupType === "family")', () => {
   it('--group <family> children returns a child with logId', async () => {
     if (!familyGroupName) return;
     const { parsed } = await run(['--group', familyGroupName, 'children']);
-    const children = parsed as Array<{ displayName?: string; publicId: string; logId?: string }>;
+    const children = parsed as { displayName?: string; publicId: string; logId?: string }[];
     const withLogId = children.find((c) => c.logId);
     expect(withLogId).toBeDefined();
     expect(withLogId!.logId).toBeTruthy();
@@ -534,7 +542,7 @@ describe('CLI family group (groupType === "family")', () => {
   it('--group <family> compare returns real data for family group children', async () => {
     if (!familyGroupName || !familyChildName) return;
     const { parsed } = await run(['--group', familyGroupName, 'compare']);
-    const result = parsed as { children: Array<{ childName: string; levelsCompleted: number }> };
+    const result = parsed as { children: { childName: string; levelsCompleted: number }[] };
     expect(result.children.length).toBeGreaterThan(0);
     const found = result.children.find(
       (c) => c.childName.toLowerCase() === familyChildName!.toLowerCase(),
@@ -555,8 +563,11 @@ describe('CLI local assignments CRUD', () => {
 
     // assign
     const { parsed: created } = await run([
-      'assign', CHILD_NAME, FILE_ID,
-      '--title', 'CLI Test Level',
+      'assign',
+      CHILD_NAME,
+      FILE_ID,
+      '--title',
+      'CLI Test Level',
     ]);
     const assignment = created as { id: string; status: string };
     expect(assignment.id).toBeTruthy();
@@ -564,13 +575,15 @@ describe('CLI local assignments CRUD', () => {
 
     // list
     const { parsed: listed } = await run(['assignments', '--child', CHILD_NAME]);
-    const list = listed as Array<{ id: string }>;
+    const list = listed as { id: string }[];
     expect(list.some((a) => a.id === assignment.id)).toBe(true);
 
     // update-assignment
     const { parsed: updated } = await run([
-      'update-assignment', assignment.id,
-      '--status', 'completed',
+      'update-assignment',
+      assignment.id,
+      '--status',
+      'completed',
     ]);
     const upd = updated as { id: string; status: string };
     expect(upd.id).toBe(assignment.id);

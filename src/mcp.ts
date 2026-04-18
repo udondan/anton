@@ -14,9 +14,9 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { Anton } from './Anton.js';
+import type { Anton } from './Anton.js';
 
-const { version } = (createRequire(import.meta.url))('../package.json') as { version: string };
+const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
 
 // ---------------------------------------------------------------------------
 // Shared parameter snippets
@@ -103,7 +103,8 @@ const TOOLS: Tool[] = [
       properties: {
         project: {
           type: 'string',
-          description: 'Course project ID, e.g. "c-mat-4". Required when not providing blockPuid/blockPath directly.',
+          description:
+            'Course project ID, e.g. "c-mat-4". Required when not providing blockPuid/blockPath directly.',
         },
         topicIndex: {
           type: 'number',
@@ -123,7 +124,8 @@ const TOOLS: Tool[] = [
         },
         blockPuid: {
           type: 'string',
-          description: 'Block PUID, e.g. "c-mat-4/ro9ajj". Use instead of project/topic/block when known.',
+          description:
+            'Block PUID, e.g. "c-mat-4/ro9ajj". Use instead of project/topic/block when known.',
         },
         blockPath: {
           type: 'string',
@@ -138,7 +140,8 @@ const TOOLS: Tool[] = [
         },
         childName: {
           type: 'string',
-          description: 'Child name as configured (e.g. "Emma"). Resolved to publicId automatically.',
+          description:
+            'Child name as configured (e.g. "Emma"). Resolved to publicId automatically.',
         },
         childPublicId: {
           type: 'string',
@@ -244,7 +247,8 @@ const TOOLS: Tool[] = [
         },
         childName: {
           type: 'string',
-          description: 'Child name as configured (e.g. "Emma"). Resolved to publicId automatically.',
+          description:
+            'Child name as configured (e.g. "Emma"). Resolved to publicId automatically.',
         },
         childPublicId: {
           type: 'string',
@@ -259,8 +263,7 @@ const TOOLS: Tool[] = [
   // ── Lesson catalogue ─────────────────────────────────────────────────────
   {
     name: 'list_children',
-    description:
-      'List configured children (those with login codes) and their session info.',
+    description: 'List configured children (those with login codes) and their session info.',
     inputSchema: {
       type: 'object',
       properties: { ...groupParam },
@@ -522,13 +525,8 @@ const TOOLS: Tool[] = [
 // Server bootstrap
 // ---------------------------------------------------------------------------
 
-type Args = Record<string, unknown>;
-
 export async function startMcpServer(anton: Anton): Promise<void> {
-  const server = new Server(
-    { name: 'anton', version },
-    { capabilities: { tools: {} } },
-  );
+  const server = new Server({ name: 'anton', version }, { capabilities: { tools: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: TOOLS }));
 

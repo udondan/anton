@@ -130,7 +130,7 @@ export interface Plan {
 
 export interface GroupMember {
   publicId: string;
-  role: 'admin' | 'pupil' | 'teacher' | string;
+  role: (string & {}) | 'admin' | 'pupil' | 'teacher';
   /** ISO-8601 date when they joined */
   originalCreatedAt?: string;
   /** Display name resolved from group/members/getDescriptions/get */
@@ -170,12 +170,12 @@ export interface LessonContent {
   type?: string;
   parentTopic?: { title: string; puid?: string };
   parentBlock?: { title: string; puid?: string };
-  trainers: Array<{
+  trainers: {
     trainer: string;
     atoms?: unknown[];
     cats?: string[];
     instruction?: string;
-  }>;
+  }[];
   [key: string]: unknown;
 }
 
@@ -323,7 +323,7 @@ export interface ActivityTimeline {
   totalDurationSeconds: number;
   averageLevelsPerActiveDay: number;
   dailyActivity: DayActivity[];
-  gaps: Array<{ from: string; to: string; days: number }>;
+  gaps: { from: string; to: string; days: number }[];
 }
 
 export interface ChildComparisonRow {

@@ -40,9 +40,15 @@ import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { Anton } from './Anton.js';
 import { startMcpServer } from './mcp.js';
-import { clearCache, isGroupInfoFresh, readCache, updateGroupInfoCache, writeCache } from './session-cache.js';
+import {
+  clearCache,
+  isGroupInfoFresh,
+  readCache,
+  updateGroupInfoCache,
+  writeCache,
+} from './session-cache.js';
 
-const { version } = (createRequire(import.meta.url))('../package.json') as { version: string };
+const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -53,10 +59,10 @@ function err(msg: string): void {
 }
 
 function loadAnton(): Anton {
-  const loginCode = process.env['ANTON_LOGIN_CODE'];
-  const logId = process.env['ANTON_LOG_ID'];
+  const loginCode = process.env.ANTON_LOGIN_CODE;
+  const logId = process.env.ANTON_LOG_ID;
   // Global --group flag takes precedence over ANTON_GROUP env var.
-  const groupName = program.opts<{ group?: string }>().group ?? process.env['ANTON_GROUP'];
+  const groupName = program.opts<{ group?: string }>().group ?? process.env.ANTON_GROUP;
 
   if (!loginCode && !logId) {
     err('No credentials configured. Set ANTON_LOGIN_CODE=<code> or ANTON_LOG_ID=<id>.');
@@ -80,9 +86,9 @@ function loadAnton(): Anton {
  */
 async function connectAnton(anton: Anton): Promise<void> {
   const { cache: useCache } = program.opts<{ cache: boolean }>();
-  const noCache = !useCache || process.env['ANTON_NO_SESSION_CACHE'] === '1';
+  const noCache = !useCache || process.env.ANTON_NO_SESSION_CACHE === '1';
 
-  const credential = process.env['ANTON_LOGIN_CODE'] ?? process.env['ANTON_LOG_ID'];
+  const credential = process.env.ANTON_LOGIN_CODE ?? process.env.ANTON_LOG_ID;
 
   if (!noCache && credential) {
     const cached = readCache(credential);
@@ -210,9 +216,8 @@ program
     let childPublicId: string | undefined;
     if (opts.child) {
       const children = anton.listChildren();
-      const match = children.find(
-        (c) => c.displayName?.toLowerCase() === opts.child!.toLowerCase(),
-      );
+      const child = opts.child;
+      const match = children.find((c) => c.displayName?.toLowerCase() === child.toLowerCase());
       if (!match) {
         err(`Child "${opts.child}" not found.`);
         process.exit(1);
@@ -233,22 +238,33 @@ program
   .option('--block-title <title>', 'Partial block title match (case-insensitive)')
   .option('--week <date>', 'Week start date (YYYY-MM-DD Monday, default: current week)')
   .option('--child <name>', 'Child name to assign to (default: whole group)')
-  .action(async (
-    project: string,
-    opts: { topicIndex?: number; topicTitle?: string; blockIndex?: number; blockTitle?: string; week?: string; child?: string },
-  ) => {
-    const anton = loadAnton();
-    await connectAnton(anton);
-    print(await anton.pinBlock({
-      project,
-      topicIndex: opts.topicIndex,
-      topicTitle: opts.topicTitle,
-      blockIndex: opts.blockIndex,
-      blockTitle: opts.blockTitle,
-      weekStartAt: opts.week,
-      childName: opts.child,
-    }));
-  });
+  .action(
+    async (
+      project: string,
+      opts: {
+        topicIndex?: number;
+        topicTitle?: string;
+        blockIndex?: number;
+        blockTitle?: string;
+        week?: string;
+        child?: string;
+      },
+    ) => {
+      const anton = loadAnton();
+      await connectAnton(anton);
+      print(
+        await anton.pinBlock({
+          project,
+          topicIndex: opts.topicIndex,
+          topicTitle: opts.topicTitle,
+          blockIndex: opts.blockIndex,
+          blockTitle: opts.blockTitle,
+          weekStartAt: opts.week,
+          childName: opts.child,
+        }),
+      );
+    },
+  );
 
 // ── unpin ────────────────────────────────────────────────────────────────────
 
@@ -341,18 +357,27 @@ program
   .description('Show raw event log for a child')
   .option('--since <date>', 'Start date (YYYY-MM-DD, default: all time)')
   .option('--type <event>', 'Filter to a specific event type (e.g. finishLevel)')
-  .option('-n, --limit <n>', 'Max number of events to return (default: 100)', (v) => parseInt(v, 10))
+  .option('-n, --limit <n>', 'Max number of events to return (default: 100)', (v) =>
+    parseInt(v, 10),
+  )
   .action(async (child: string, opts: { since?: string; type?: string; limit?: number }) => {
     const anton = loadAnton();
     await connectAnton(anton);
-    print(await anton.getEvents({ childName: child, since: opts.since, eventType: opts.type, limit: opts.limit }));
+    print(
+      await anton.getEvents({
+        childName: child,
+        since: opts.since,
+        eventType: opts.type,
+        limit: opts.limit,
+      }),
+    );
   });
 
 // ── level-progress ───────────────────────────────────────────────────────────
 
 program
   .command('level-progress <levelPuid> <child>')
-  .description("Detailed per-level performance for a child (uses the reviewReport API)")
+  .description('Detailed per-level performance for a child (uses the reviewReport API)')
   .action(async (levelPuid: string, child: string) => {
     const anton = loadAnton();
     await connectAnton(anton);
@@ -486,7 +511,7 @@ program
 // Run
 // ---------------------------------------------------------------------------
 
-program.parseAsync(process.argv).catch((e: Error) => {
-  err(e.message);
+program.parseAsync(process.argv).catch((e: unknown) => {
+  err((e as Error).message);
   process.exit(1);
 });

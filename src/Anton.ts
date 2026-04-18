@@ -127,7 +127,7 @@ export class Anton {
         this.allGroups = await this.fetchAllGroups(groupCodes, this.parentSession);
       }
     } catch (err) {
-      throw new Error(`Failed to load family group: ${(err as Error).message}`);
+      throw new Error(`Failed to load family group: ${(err as Error).message}`, { cause: err });
     }
   }
 
@@ -199,7 +199,9 @@ export class Anton {
             }
           }
         } catch (err) {
-          console.warn(`[anton] Could not fetch member descriptions for group ${code}: ${(err as Error).message}`);
+          console.warn(
+            `[anton] Could not fetch member descriptions for group ${code}: ${(err as Error).message}`,
+          );
         }
         return info;
       }),
@@ -223,9 +225,7 @@ export class Anton {
     }
     const name = groupName ?? this.config.groupName;
     if (name) {
-      const found = this.allGroups.find(
-        (g) => g.groupName.toLowerCase() === name.toLowerCase(),
-      );
+      const found = this.allGroups.find((g) => g.groupName.toLowerCase() === name.toLowerCase());
       if (!found) {
         throw new Error(
           `Group "${name}" not found. Available groups: ${this.allGroups.map((g) => g.groupName).join(', ')}`,
@@ -233,7 +233,7 @@ export class Anton {
       }
       return found;
     }
-    return this.allGroups[0]!;
+    return this.allGroups[0];
   }
 
   private getDefaultGroup(): GroupInfo | null {
@@ -242,34 +242,47 @@ export class Anton {
     if (name) {
       return (
         this.allGroups.find((g) => g.groupName.toLowerCase() === name.toLowerCase()) ??
-        this.allGroups[0]!
+        this.allGroups[0]
       );
     }
-    return this.allGroups[0]!;
+    return this.allGroups[0];
   }
 
   /** Find a child by display name within the configured group. */
   private resolveChild(name: string, groupName?: string): ResolvedChild {
     const group = this.requireGroup(groupName);
-    const m = group.members.find(
-      (mem) => mem.displayName?.toLowerCase() === name.toLowerCase(),
-    );
+    const m = group.members.find((mem) => mem.displayName?.toLowerCase() === name.toLowerCase());
     if (!m) {
-      throw new Error(`Child "${name}" not found in group "${group.groupName}". Use listChildren() to see member names.`);
+      throw new Error(
+        `Child "${name}" not found in group "${group.groupName}". Use listChildren() to see member names.`,
+      );
     }
-    return { logId: m.logId, publicId: m.publicId, displayName: m.displayName ?? name, groupCode: group.groupCode };
+    return {
+      logId: m.logId,
+      publicId: m.publicId,
+      displayName: m.displayName ?? name,
+      groupCode: group.groupCode,
+    };
   }
 
   /** Fetch events for a child, using logId (family groups) or publicId+groupCode (class groups). */
-  private async getChildEvents(child: ResolvedChild, since = '1970-01-01'): Promise<FinishLevelEvent[]> {
+  private async getChildEvents(
+    child: ResolvedChild,
+    since = '1970-01-01',
+  ): Promise<FinishLevelEvent[]> {
     const parent = this.requireParent();
     let events: AntonEvent[];
     if (child.logId) {
       events = await getUserEvents(child.logId, since);
     } else {
-      events = await getGroupMemberEvents(child.publicId, child.groupCode, parent.logId, parent.authToken);
+      events = await getGroupMemberEvents(
+        child.publicId,
+        child.groupCode,
+        parent.logId,
+        parent.authToken,
+      );
       if (since !== '1970-01-01') {
-        events = events.filter((e) => (e.created ?? '') >= since);
+        events = events.filter((e) => e.created >= since);
       }
     }
     return events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
@@ -289,7 +302,9 @@ export class Anton {
 
   /** Return current auth and group status (synchronous — no network call). */
   getStatus(opts?: { groupName?: string }) {
-    const defaultGroup = opts?.groupName ? this.requireGroup(opts.groupName) : this.getDefaultGroup();
+    const defaultGroup = opts?.groupName
+      ? this.requireGroup(opts.groupName)
+      : this.getDefaultGroup();
     return {
       parent: this.parentSession
         ? {
@@ -351,18 +366,12 @@ export class Anton {
   }
 
   /** List all pinned blocks (assignments) in the group, with optional filters. */
-  async getGroupAssignments(opts?: {
-    childPublicId?: string;
-    week?: string;
-    groupName?: string;
-  }) {
+  async getGroupAssignments(opts?: { childPublicId?: string; week?: string; groupName?: string }) {
     const group = this.requireGroup(opts?.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
     let blocks = parsePinnedBlocks(groupEvents);
     if (opts?.childPublicId) {
-      blocks = blocks.filter(
-        (b) => b.subgroup === opts.childPublicId || b.subgroup == null,
-      );
+      blocks = blocks.filter((b) => b.subgroup === opts.childPublicId || b.subgroup == null);
     }
     if (opts?.week) {
       blocks = blocks.filter((b) => b.weekStartAt === opts.week);
@@ -394,8 +403,9 @@ export class Anton {
 
     let childPublicId = opts.childPublicId;
     if (opts.childName) {
+      const childName = opts.childName;
       const match = group.members.find(
-        (m) => m.displayName?.toLowerCase() === opts.childName!.toLowerCase(),
+        (m) => m.displayName?.toLowerCase() === childName.toLowerCase(),
       );
       if (!match) {
         throw new Error(`Child "${opts.childName}" not found. Use getGroup() to see member names.`);
@@ -408,16 +418,16 @@ export class Anton {
 
     if (opts.project) {
       const plan = await getPlan(opts.project);
-      const topics = plan.topics ?? [];
+      const topics = plan.topics;
 
       let topic: (typeof topics)[0] | undefined;
       if (opts.topicIndex != null) {
-        topic = topics[opts.topicIndex];
-        if (!topic) {
+        if (opts.topicIndex < 0 || opts.topicIndex >= topics.length) {
           throw new Error(
-            `Topic index ${opts.topicIndex} out of range (0–${topics.length - 1})`,
+            `Topic index ${String(opts.topicIndex)} out of range (0–${String(topics.length - 1)})`,
           );
         }
+        topic = topics[opts.topicIndex];
       } else if (opts.topicTitle) {
         const needle = opts.topicTitle.toLowerCase();
         topic = topics.find((t) => t.title.toLowerCase().includes(needle));
@@ -426,13 +436,15 @@ export class Anton {
         throw new Error('Provide topicIndex or topicTitle when using project-based lookup');
       }
 
-      const blocks = topic.blocks ?? [];
+      const blocks = topic.blocks;
       let block: (typeof blocks)[0] | undefined;
       if (opts.blockIndex != null) {
-        block = blocks[opts.blockIndex];
-        if (!block) {
-          throw new Error(`Block index ${opts.blockIndex} out of range (0–${blocks.length - 1})`);
+        if (opts.blockIndex < 0 || opts.blockIndex >= blocks.length) {
+          throw new Error(
+            `Block index ${String(opts.blockIndex)} out of range (0–${String(blocks.length - 1)})`,
+          );
         }
+        block = blocks[opts.blockIndex];
       } else if (opts.blockTitle) {
         const needle = opts.blockTitle.toLowerCase();
         block = blocks.find((b) => b.title.toLowerCase().includes(needle));
@@ -442,7 +454,7 @@ export class Anton {
       }
 
       blockPuid = block.puid;
-      blockPath = `/../${opts.project}/${topic.puid?.split('/')[1] ?? 'topic'}/${block.puid?.split('/')[1] ?? 'block'}/block`;
+      blockPath = `/../${opts.project}/${topic.puid.split('/')[1]}/${block.puid.split('/')[1]}/block`;
     }
 
     if (!blockPuid || !blockPath) {
@@ -494,7 +506,12 @@ export class Anton {
       throw new Error(`No pin found for puid=${opts.blockPuid} week=${opts.weekStartAt}`);
     }
     await unpinGroupBlock(group.groupCode, match.created, parent.logId, parent.authToken);
-    return { unpinned: true, groupCode: group.groupCode, blockPuid: opts.blockPuid, weekStartAt: opts.weekStartAt };
+    return {
+      unpinned: true,
+      groupCode: group.groupCode,
+      blockPuid: opts.blockPuid,
+      weekStartAt: opts.weekStartAt,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -522,8 +539,13 @@ export class Anton {
     if (child.logId) {
       events = await getUserEvents(child.logId, since);
     } else {
-      events = await getGroupMemberEvents(child.publicId, child.groupCode, parent.logId, parent.authToken);
-      if (since !== '1970-01-01') events = events.filter((e) => (e.created ?? '') >= since);
+      events = await getGroupMemberEvents(
+        child.publicId,
+        child.groupCode,
+        parent.logId,
+        parent.authToken,
+      );
+      if (since !== '1970-01-01') events = events.filter((e) => e.created >= since);
     }
     return summariseProgress(child.logId ?? child.publicId, events);
   }
@@ -544,8 +566,13 @@ export class Anton {
     if (child.logId) {
       events = await getUserEvents(child.logId, since);
     } else {
-      events = await getGroupMemberEvents(child.publicId, child.groupCode, parent.logId, parent.authToken);
-      if (since !== '1970-01-01') events = events.filter((e) => (e.created ?? '') >= since);
+      events = await getGroupMemberEvents(
+        child.publicId,
+        child.groupCode,
+        parent.logId,
+        parent.authToken,
+      );
+      if (since !== '1970-01-01') events = events.filter((e) => e.created >= since);
     }
     if (opts.eventType) events = events.filter((e) => e.event === opts.eventType);
     return events.slice(0, limit);
@@ -580,27 +607,20 @@ export class Anton {
 
     return plans
       .filter((p) => !p.isDebug)
-      .filter((p) => (p.guiLanguages ?? []).includes(language))
+      .filter((p) => p.guiLanguages.includes(language))
       .filter((p) => {
         if (!subject) return true;
-        const s =
-          typeof p.subject === 'string'
-            ? p.subject
-            : (p.subject as Record<string, string>)[language] ?? '';
+        const s = typeof p.subject === 'string' ? p.subject : p.subject[language];
         return s.toLowerCase().includes(subject);
       })
       .filter((p) => {
         if (grade == null) return true;
-        return (p.grades ?? []).includes(grade);
+        return p.grades.includes(grade);
       })
       .map((p) => ({
         project: p.project,
-        title:
-          typeof p.title === 'string' ? p.title : (p.title as Record<string, string>)[language],
-        subject:
-          typeof p.subject === 'string'
-            ? p.subject
-            : (p.subject as Record<string, string>)[language],
+        title: typeof p.title === 'string' ? p.title : p.title[language],
+        subject: typeof p.subject === 'string' ? p.subject : p.subject[language],
         grades: p.grades,
         totalBlocks: p.totalBlocks,
         totalLevels: p.totalLevels,
@@ -613,30 +633,28 @@ export class Anton {
     return {
       project: plan.project,
       title: plan.title,
-      topics: (plan.topics ?? []).map((t, i) => ({
+      topics: plan.topics.map((t, i) => ({
         index: i,
         title: t.title,
         puid: t.puid,
-        totalBlocks: (t.blocks ?? []).length,
+        totalBlocks: t.blocks.length,
       })),
     };
   }
 
   /** Fetch all blocks (and levels) for a single topic within a course. */
-  async getTopicBlocks(opts: {
-    project: string;
-    topicIndex?: number;
-    topicTitle?: string;
-  }) {
+  async getTopicBlocks(opts: { project: string; topicIndex?: number; topicTitle?: string }) {
     const plan = await getPlan(opts.project);
-    const topics = plan.topics ?? [];
+    const topics = plan.topics;
 
     let topic: (typeof topics)[0] | undefined;
     if (opts.topicIndex != null) {
-      topic = topics[opts.topicIndex];
-      if (!topic) {
-        throw new Error(`Topic index ${opts.topicIndex} out of range (0–${topics.length - 1})`);
+      if (opts.topicIndex < 0 || opts.topicIndex >= topics.length) {
+        throw new Error(
+          `Topic index ${String(opts.topicIndex)} out of range (0–${String(topics.length - 1)})`,
+        );
       }
+      topic = topics[opts.topicIndex];
     } else if (opts.topicTitle) {
       const needle = opts.topicTitle.toLowerCase();
       topic = topics.find((t) => t.title.toLowerCase().includes(needle));
@@ -661,7 +679,7 @@ export class Anton {
       project: plan.project,
       totalBlocks: plan.totalBlocks,
       totalLevels: plan.totalLevels,
-      topics: (plan.topics ?? []).map((t) => ({
+      topics: plan.topics.map((t) => ({
         title: t.title,
         puid: t.puid,
         blocks: this.buildTopicBlocks(opts.project, t),
@@ -679,19 +697,19 @@ export class Anton {
     t: {
       title: string;
       puid: string;
-      blocks?: Array<{
+      blocks: {
         title: string;
         puid: string;
-        levels?: Array<{ title: string; puid: string; type?: string; path?: string }>;
-      }>;
+        levels: { title: string; puid: string; type?: string; path?: string }[];
+      }[];
     },
   ) {
-    return (t.blocks ?? []).map((b) => ({
+    return t.blocks.map((b) => ({
       title: b.title,
       puid: b.puid,
-      blockPath: `/../${project}/${t.puid?.split('/')[1] ?? 'topic'}/${b.puid?.split('/')[1] ?? 'block'}/block`,
-      totalLevels: (b.levels ?? []).length,
-      levels: (b.levels ?? []).map((lv) => ({
+      blockPath: `/../${project}/${t.puid.split('/')[1]}/${b.puid.split('/')[1]}/block`,
+      totalLevels: b.levels.length,
+      levels: b.levels.map((lv) => ({
         title: lv.title,
         puid: lv.puid,
         type: lv.type,
@@ -705,11 +723,7 @@ export class Anton {
   // ---------------------------------------------------------------------------
 
   /** Check which assigned blocks a child has completed. */
-  async checkAssignmentCompletion(opts: {
-    childName: string;
-    week?: string;
-    groupName?: string;
-  }) {
+  async checkAssignmentCompletion(opts: { childName: string; week?: string; groupName?: string }) {
     const child = this.resolveChild(opts.childName, opts.groupName);
     const group = this.requireGroup(opts.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
@@ -720,9 +734,9 @@ export class Anton {
     );
     const filtered = opts.week ? relevant.filter((b) => b.weekStartAt === opts.week) : relevant;
 
-    const projects = Array.from(new Set(filtered.map((b) => b.puid.split('/')[0]!)));
+    const projects = Array.from(new Set(filtered.map((b) => b.puid.split('/')[0])));
     const plans = await Promise.all(projects.map((p) => getPlan(p)));
-    const planCache = new Map(projects.map((p, i) => [p, plans[i]!]));
+    const planCache = new Map(projects.map((p, i) => [p, plans[i]]));
 
     const finishEvents = await this.getChildEvents(child);
 
@@ -737,11 +751,7 @@ export class Anton {
   }
 
   /** Weekly rollup of a child's activity. */
-  async getWeeklySummary(opts: {
-    childName: string;
-    weekStartAt?: string;
-    groupName?: string;
-  }) {
+  async getWeeklySummary(opts: { childName: string; weekStartAt?: string; groupName?: string }) {
     const child = this.resolveChild(opts.childName, opts.groupName);
     const weekStartAt = opts.weekStartAt ?? this.currentWeekMonday();
 
@@ -774,7 +784,6 @@ export class Anton {
   /** Side-by-side comparison of all children in a group. */
   async compareChildren(opts?: { groupName?: string }) {
     const group = this.requireGroup(opts?.groupName);
-    const parent = this.requireParent();
     const pupils = group.members.filter((m) => m.role === 'pupil');
     const rows = await Promise.all(
       pupils.map(async (m) => {

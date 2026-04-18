@@ -19,8 +19,7 @@ import type { Assignment, AssignmentStatus, AssignmentStore } from './types.js';
 
 function storePath(): string {
   return (
-    process.env['ANTON_ASSIGNMENTS_FILE'] ??
-    join(homedir(), '.config', 'anton', 'assignments.json')
+    process.env.ANTON_ASSIGNMENTS_FILE ?? join(homedir(), '.config', 'anton', 'assignments.json')
   );
 }
 
@@ -91,7 +90,7 @@ export function updateAssignment(
   const store = load();
   const idx = store.assignments.findIndex((a) => a.id === id);
   if (idx === -1) throw new Error(`Assignment not found: ${id}`);
-  const a = store.assignments[idx]!;
+  const a = store.assignments[idx];
   if (updates.status) a.status = updates.status;
   if (updates.note !== undefined) a.note = updates.note;
   if (updates.lessonTitle !== undefined) a.lessonTitle = updates.lessonTitle;

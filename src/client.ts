@@ -27,9 +27,6 @@ import type {
 /** Device log ID from the browser's localStorage */
 const DEVICE_LOG_ID = 'D-YT8Q-uusgorxroQWveIBP2afCCXK3pYR';
 
-/** Device source token */
-const DEVICE_SRC = 'wl9a';
-
 /** Headers that mimic the official Chrome-based web client */
 const BASE_HEADERS: Record<string, string> = {
   'Content-Type': 'application/json',
@@ -105,11 +102,9 @@ async function pllsCall<T>(
 function assertOk(data: unknown): void {
   if (typeof data !== 'object' || data === null) return;
   const d = data as Record<string, unknown>;
-  if (d['status'] === 'error' || d['error'] === true || d['error'] === 'true') {
+  if (d.status === 'error' || d.error === true || d.error === 'true') {
     const msg =
-      (d['message'] as string | undefined) ??
-      (d['status'] as string | undefined) ??
-      'Unknown API error';
+      (d.message as string | undefined) ?? (d.status as string | undefined) ?? 'Unknown API error';
     throw new Error(`Anton API error: ${msg}`);
   }
 }
@@ -218,8 +213,8 @@ export function extractPublicId(events: AntonEvent[]): string | undefined {
 export function extractGroupCodes(events: AntonEvent[]): string[] {
   const codes = new Set<string>();
   for (const evt of events) {
-    if (evt.event === 'isGroupMember' && typeof evt['groupCode'] === 'string') {
-      codes.add(evt['groupCode']);
+    if (evt.event === 'isGroupMember' && typeof evt.groupCode === 'string') {
+      codes.add(evt.groupCode);
     }
   }
   return Array.from(codes);
@@ -243,9 +238,9 @@ export function parseGroupInfo(groupCode: string, events: AntonEvent[]): GroupIn
       info.groupName = evt.value;
     } else if (evt.event === 'setGroupMember') {
       const member: GroupMember = {
-        publicId: evt['publicId'] as string,
-        role: (evt['role'] as string) ?? 'pupil',
-        originalCreatedAt: evt['originalCreatedAt'] as string | undefined,
+        publicId: evt.publicId as string,
+        role: evt.role as string,
+        originalCreatedAt: evt.originalCreatedAt as string | undefined,
       };
       // Deduplicate by publicId, keeping latest entry
       const existing = info.members.findIndex((m) => m.publicId === member.publicId);
@@ -254,9 +249,9 @@ export function parseGroupInfo(groupCode: string, events: AntonEvent[]): GroupIn
       } else {
         info.members.push(member);
       }
-    } else if (evt.event === 'isPlus' && typeof evt['validUntil'] === 'string') {
+    } else if (evt.event === 'isPlus' && typeof evt.validUntil === 'string') {
       info.isPlus = true;
-      info.plusValidUntil = evt['validUntil'];
+      info.plusValidUntil = evt.validUntil;
     }
   }
 
@@ -270,10 +265,10 @@ export function parsePinnedBlocks(events: AntonEvent[]): PinnedBlock[] {
   return events
     .filter((evt) => evt.event === 'pinGroupBlock')
     .map((evt) => ({
-      puid: evt['puid'] as string,
-      block: evt['block'] as string,
-      weekStartAt: evt['weekStartAt'] as string,
-      subgroup: evt['subgroup'] as string | undefined,
+      puid: evt.puid as string,
+      block: evt.block as string,
+      weekStartAt: evt.weekStartAt as string,
+      subgroup: evt.subgroup as string | undefined,
       created: evt.created,
     }));
 }
@@ -289,8 +284,8 @@ let _pinMutex: Promise<void> = Promise.resolve();
 function withPinMutex<T>(fn: () => Promise<T>): Promise<T> {
   const next = _pinMutex.then(fn, fn);
   _pinMutex = next.then(
-    () => {},
-    () => {},
+    () => undefined,
+    () => undefined,
   );
   return next;
 }
@@ -343,7 +338,8 @@ export function pinGroupBlock(
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         throw new Error(
-          `pinGroupBlock failed: HTTP ${err.response?.status} — ${JSON.stringify(err.response?.data)}`,
+          `pinGroupBlock failed: HTTP ${String(err.response?.status ?? 'unknown')} — ${JSON.stringify(err.response?.data)}`,
+          { cause: err },
         );
       }
       throw err;
@@ -382,7 +378,8 @@ export async function unpinGroupBlock(
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       throw new Error(
-        `unpinGroupBlock failed: HTTP ${err.response?.status} — ${JSON.stringify(err.response?.data)}`,
+        `unpinGroupBlock failed: HTTP ${String(err.response?.status ?? 'unknown')} — ${JSON.stringify(err.response?.data)}`,
+        { cause: err },
       );
     }
     throw err;
@@ -398,14 +395,11 @@ export async function unpinGroupBlock(
  * Returns ~285 plans covering grades 1–13 and all subjects.
  */
 export async function getPlansCatalogue(): Promise<PlanSummary[]> {
-  const response = await axios.get<{ plans: PlanSummary[] }>(
-    'https://content.anton.app/files/',
-    {
-      params: { fileId: 'list/plans', etag: 'latest' },
-      headers: { Accept: 'application/json', Origin: 'https://anton.app' },
-    },
-  );
-  return response.data.plans ?? [];
+  const response = await axios.get<{ plans: PlanSummary[] }>('https://content.anton.app/files/', {
+    params: { fileId: 'list/plans', etag: 'latest' },
+    headers: { Accept: 'application/json', Origin: 'https://anton.app' },
+  });
+  return response.data.plans;
 }
 
 /**
@@ -477,7 +471,7 @@ export async function getGroupMemberDescriptions(
     logId,
     authToken,
   );
-  const { pupil = [], teacher = [], admin = [] } = data.memberDescriptions ?? {};
+  const { pupil, teacher, admin } = data.memberDescriptions;
   return [...pupil, ...teacher, ...admin];
 }
 
@@ -494,13 +488,8 @@ export async function getGroupMemberEvents(
 ): Promise<AntonEvent[]> {
   const data = await pllsCall<{
     status: string;
-    events?: Array<{ created: string; event: string; data: Record<string, unknown> }>;
-  }>(
-    'getUserTimelineEvents/query',
-    { publicId, groupCode },
-    parentLogId,
-    parentAuthToken,
-  );
+    events?: { created: string; event: string; data: Record<string, unknown> }[];
+  }>('getUserTimelineEvents/query', { publicId, groupCode }, parentLogId, parentAuthToken);
   return (data.events ?? []).map(({ created, event, data: d }) => ({
     created,
     event,
@@ -572,7 +561,7 @@ export function summariseProgress(logId: string, events: AntonEvent[]): Progress
   for (const fe of seenLevels.values()) {
     completedLevels.push(fe);
     const subject = fe.puid.split('/')[0] ?? 'unknown';
-    starsBySubject[subject] = (starsBySubject[subject] ?? 0) + (fe.score ?? 0);
+    starsBySubject[subject] = (starsBySubject[subject] ?? 0) + fe.score;
   }
 
   // Sort by created date descending

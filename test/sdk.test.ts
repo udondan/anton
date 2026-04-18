@@ -368,7 +368,9 @@ describe('Anton.pinBlock / unpinBlock', () => {
 
     // Verify it appears in the group assignments
     const children = anton.listChildren();
-    const testChild = children.find((c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase())!;
+    const testChild = children.find(
+      (c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase(),
+    )!;
     const assignments = await anton.getGroupAssignments({
       week: FAR_FUTURE_WEEK,
       childPublicId: testChild.publicId,
@@ -384,7 +386,9 @@ describe('Anton.pinBlock / unpinBlock', () => {
       week: FAR_FUTURE_WEEK,
       childPublicId: testChild.publicId,
     });
-    expect(after.find((a) => a.puid === block.puid && a.weekStartAt === FAR_FUTURE_WEEK)).toBeUndefined();
+    expect(
+      after.find((a) => a.puid === block.puid && a.weekStartAt === FAR_FUTURE_WEEK),
+    ).toBeUndefined();
   }, 45_000);
 
   it('pins using topicTitle and blockTitle then unpins', async () => {
@@ -414,7 +418,9 @@ describe('Anton.pinBlock / unpinBlock', () => {
     const expectedMonday = now.toISOString().slice(0, 10);
 
     const children = anton.listChildren();
-    const testChild = children.find((c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase())!;
+    const testChild = children.find(
+      (c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase(),
+    )!;
 
     const pinResult = await anton.pinBlock({
       project: 'c-mat-4',
@@ -457,7 +463,11 @@ describe('Anton.getEvents', () => {
   });
 
   it('can filter by event type', async () => {
-    const events = await anton.getEvents({ childName: CHILD_NAME, eventType: 'finishLevel', limit: 5 });
+    const events = await anton.getEvents({
+      childName: CHILD_NAME,
+      eventType: 'finishLevel',
+      limit: 5,
+    });
     for (const e of events) {
       expect((e as { event: string }).event).toBe('finishLevel');
     }
@@ -528,7 +538,10 @@ describe('Anton.checkAssignmentCompletion', () => {
   }, 30_000);
 
   it('filtered to a far-future week returns empty assignments', async () => {
-    const result = await anton.checkAssignmentCompletion({ childName: CHILD_NAME, week: '2099-01-01' });
+    const result = await anton.checkAssignmentCompletion({
+      childName: CHILD_NAME,
+      week: '2099-01-01',
+    });
     expect((result as { assignments: unknown[] }).assignments).toHaveLength(0);
   }, 30_000);
 });
@@ -546,9 +559,11 @@ describe('Anton.getSubjectSummary', () => {
 
   it('can filter by subject prefix', async () => {
     const result = await anton.getSubjectSummary({ childName: CHILD_NAME, subject: 'mat' });
-    expect((result as { subjects: Array<{ subject: string }> }).subjects.every(
-      (s) => s.subject.toLowerCase().includes('mat'),
-    )).toBe(true);
+    expect(
+      (result as { subjects: { subject: string }[] }).subjects.every((s) =>
+        s.subject.toLowerCase().includes('mat'),
+      ),
+    ).toBe(true);
   }, 30_000);
 });
 
@@ -580,7 +595,8 @@ describe('Anton.compareChildren', () => {
     const result = await anton.compareChildren();
     expect(Array.isArray((result as { children: unknown[] }).children)).toBe(true);
     expect((result as { children: unknown[] }).children.length).toBeGreaterThan(0);
-    const first = (result as { children: Array<{ childName: string; totalStars: number }> }).children[0]!;
+    const first = (result as { children: { childName: string; totalStars: number }[] })
+      .children[0]!;
     expect(first.childName).toBeTruthy();
     expect(typeof first.totalStars).toBe('number');
   }, 30_000);
@@ -596,9 +612,9 @@ describe('Error paths', () => {
   });
 
   it('getTopicBlocks throws for an out-of-range topicIndex', async () => {
-    await expect(
-      anton.getTopicBlocks({ project: 'c-mat-4', topicIndex: 9999 }),
-    ).rejects.toThrow(/out of range/i);
+    await expect(anton.getTopicBlocks({ project: 'c-mat-4', topicIndex: 9999 })).rejects.toThrow(
+      /out of range/i,
+    );
   });
 
   it('pinBlock throws when neither project nor blockPuid is provided', async () => {
@@ -612,9 +628,9 @@ describe('Error paths', () => {
   }, 15_000);
 
   it('getLevelProgress throws when neither childName nor childPublicId is provided', async () => {
-    await expect(
-      anton.getLevelProgress({ levelPuid: 'c-mat-4/xxxxx' }),
-    ).rejects.toThrow(/provide childName or childPublicId/i);
+    await expect(anton.getLevelProgress({ levelPuid: 'c-mat-4/xxxxx' })).rejects.toThrow(
+      /provide childName or childPublicId/i,
+    );
   });
 });
 
@@ -664,8 +680,8 @@ describe('Family group (groupType === "family")', () => {
 
   it('compareChildren fetches real data for family group children', async () => {
     if (!familyAnton || !familyChildName) return;
-    const result = await familyAnton.compareChildren() as {
-      children: Array<{ childName: string; levelsCompleted: number }>;
+    const result = (await familyAnton.compareChildren()) as {
+      children: { childName: string; levelsCompleted: number }[];
     };
     expect(result.children.length).toBeGreaterThan(0);
     const found = result.children.find(

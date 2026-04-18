@@ -76,9 +76,7 @@ export function checkAssignmentCompletion(
   }
 
   // Filter pinned blocks to this child
-  let blocks = pinnedBlocks.filter(
-    (b) => b.subgroup == null || b.subgroup === filterPublicId,
-  );
+  let blocks = pinnedBlocks.filter((b) => b.subgroup == null || b.subgroup === filterPublicId);
   if (filterWeek) {
     blocks = blocks.filter((b) => b.weekStartAt === filterWeek);
   }
@@ -86,7 +84,7 @@ export function checkAssignmentCompletion(
   const assignments: AssignmentCompletionStatus[] = [];
 
   for (const block of blocks) {
-    const project = block.puid.split('/')[0]!;
+    const project = block.puid.split('/')[0];
     const plan = planCache.get(project);
 
     if (!plan) {
@@ -107,11 +105,11 @@ export function checkAssignmentCompletion(
     let blockTitle = block.puid;
     let levels: { puid: string; title: string }[] = [];
 
-    for (const topic of plan.topics ?? []) {
-      for (const b of topic.blocks ?? []) {
+    for (const topic of plan.topics) {
+      for (const b of topic.blocks) {
         if (b.puid === block.puid) {
           blockTitle = b.title;
-          levels = (b.levels ?? []).map((lv) => ({ puid: lv.puid, title: lv.title }));
+          levels = b.levels.map((lv) => ({ puid: lv.puid, title: lv.title }));
           break;
         }
       }
@@ -196,12 +194,12 @@ export function getWeeklySummary(
   }
 
   for (const evt of seenInWeek.values()) {
-    totalCorrects += evt.corrects ?? 0;
-    totalQuestions += evt.total ?? 0;
-    starsEarned += evt.score ?? 0;
-    starsMax += evt.total ?? 0;
-    totalDurationSeconds += evt.duration ?? 0;
-    subjects.add(evt.puid.split('/')[0]!);
+    totalCorrects += evt.corrects;
+    totalQuestions += evt.total;
+    starsEarned += evt.score;
+    starsMax += evt.total;
+    totalDurationSeconds += evt.duration;
+    subjects.add(evt.puid.split('/')[0]);
     if (assignedBlockPuids.has(evt.blockPuid)) {
       assignedCount++;
     }
@@ -242,9 +240,13 @@ export function getSubjectSummary(
   // Group events by project prefix
   const bySubject = new Map<string, FinishLevelEvent[]>();
   for (const evt of finishEvents) {
-    const project = evt.puid.split('/')[0]!;
-    if (!bySubject.has(project)) bySubject.set(project, []);
-    bySubject.get(project)!.push(evt);
+    const project = evt.puid.split('/')[0];
+    let projectEvents = bySubject.get(project);
+    if (!projectEvents) {
+      projectEvents = [];
+      bySubject.set(project, projectEvents);
+    }
+    projectEvents.push(evt);
   }
 
   const subjects: SubjectSummary[] = [];
@@ -265,10 +267,10 @@ export function getSubjectSummary(
     let totalDuration = 0;
 
     for (const evt of sorted) {
-      totalCorrects += evt.corrects ?? 0;
-      totalQuestions += evt.total ?? 0;
-      totalStars += evt.score ?? 0;
-      totalDuration += evt.duration ?? 0;
+      totalCorrects += evt.corrects;
+      totalQuestions += evt.total;
+      totalStars += evt.score;
+      totalDuration += evt.duration;
     }
 
     // Trend: compare accuracy of last N vs second-to-last N sessions
@@ -277,11 +279,17 @@ export function getSubjectSummary(
       const recent = sorted.slice(-trendWindowSize);
       const prior = sorted.slice(-trendWindowSize * 2, -trendWindowSize);
       const recentAcc =
-        recent.reduce((s, e) => s + (e.corrects ?? 0), 0) /
-        Math.max(1, recent.reduce((s, e) => s + (e.total ?? 0), 0));
+        recent.reduce((s, e) => s + e.corrects, 0) /
+        Math.max(
+          1,
+          recent.reduce((s, e) => s + e.total, 0),
+        );
       const priorAcc =
-        prior.reduce((s, e) => s + (e.corrects ?? 0), 0) /
-        Math.max(1, prior.reduce((s, e) => s + (e.total ?? 0), 0));
+        prior.reduce((s, e) => s + e.corrects, 0) /
+        Math.max(
+          1,
+          prior.reduce((s, e) => s + e.total, 0),
+        );
       const delta = recentAcc - priorAcc;
       if (delta > 0.05) trend = 'improving';
       else if (delta < -0.05) trend = 'declining';
@@ -325,8 +333,12 @@ export function getActivityTimeline(
   const byDate = new Map<string, FinishLevelEvent[]>();
   for (const evt of filtered) {
     const d = evt.created.slice(0, 10);
-    if (!byDate.has(d)) byDate.set(d, []);
-    byDate.get(d)!.push(evt);
+    let dayEvents = byDate.get(d);
+    if (!dayEvents) {
+      dayEvents = [];
+      byDate.set(d, dayEvents);
+    }
+    dayEvents.push(evt);
   }
 
   const sortedDates = Array.from(byDate.keys()).sort();
@@ -337,9 +349,9 @@ export function getActivityTimeline(
   const dailyActivity: DayActivity[] = [];
 
   for (const date of sortedDates) {
-    const events = byDate.get(date)!;
-    const dayDuration = events.reduce((s, e) => s + (e.duration ?? 0), 0);
-    const daySubjects = Array.from(new Set(events.map((e) => e.puid.split('/')[0]!)));
+    const events = byDate.get(date) ?? [];
+    const dayDuration = events.reduce((s, e) => s + e.duration, 0);
+    const daySubjects = Array.from(new Set(events.map((e) => e.puid.split('/')[0])));
     totalLevels += events.length;
     totalDuration += dayDuration;
     dailyActivity.push({
@@ -352,7 +364,7 @@ export function getActivityTimeline(
 
   // Streak calculation
   let longestStreak = 0;
-  let currentStreak = 0;
+  let currentStreak: number;
   let streak = 0;
   const todayStr = today();
 
@@ -360,8 +372,8 @@ export function getActivityTimeline(
     if (i === 0) {
       streak = 1;
     } else {
-      const prev = sortedDates[i - 1]!;
-      const curr = sortedDates[i]!;
+      const prev = sortedDates[i - 1];
+      const curr = sortedDates[i];
       streak = daysBetween(prev, curr) === 1 ? streak + 1 : 1;
     }
     if (streak > longestStreak) longestStreak = streak;
@@ -378,8 +390,8 @@ export function getActivityTimeline(
   // Gaps: inactive periods > 2 days
   const gaps: ActivityTimeline['gaps'] = [];
   for (let i = 1; i < sortedDates.length; i++) {
-    const prev = sortedDates[i - 1]!;
-    const curr = sortedDates[i]!;
+    const prev = sortedDates[i - 1];
+    const curr = sortedDates[i];
     const gap = daysBetween(prev, curr);
     if (gap > 2) {
       gaps.push({ from: prev, to: curr, days: gap });
@@ -412,7 +424,7 @@ export function getActivityTimeline(
  * Side-by-side comparison of all configured children.
  */
 export function compareChildren(
-  childRows: Array<{ name: string; finishEvents: FinishLevelEvent[] }>,
+  childRows: { name: string; finishEvents: FinishLevelEvent[] }[],
 ): CompareChildrenResult {
   const children: ChildComparisonRow[] = childRows.map(({ name, finishEvents }) => {
     let totalStars = 0;
@@ -424,13 +436,13 @@ export function compareChildren(
     let lastActiveDate: string | null = null;
 
     for (const evt of finishEvents) {
-      totalStars += evt.score ?? 0;
-      totalCorrects += evt.corrects ?? 0;
-      totalQuestions += evt.total ?? 0;
-      totalDuration += evt.duration ?? 0;
+      totalStars += evt.score;
+      totalCorrects += evt.corrects;
+      totalQuestions += evt.total;
+      totalDuration += evt.duration;
       const d = evt.created.slice(0, 10);
       activeDates.add(d);
-      subjects.add(evt.puid.split('/')[0]!);
+      subjects.add(evt.puid.split('/')[0]);
       if (!lastActiveDate || d > lastActiveDate) lastActiveDate = d;
     }
 

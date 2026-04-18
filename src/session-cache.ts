@@ -71,18 +71,23 @@ export function readCache(credential: string, path = defaultCachePath()): CacheE
   if (!existsSync(path)) return null;
   try {
     const raw = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
-    if (raw['credential'] !== credential) return null;
+    if (raw.credential !== credential) return null;
 
     // Migrate from old single-group format written by earlier versions.
-    if (raw['groupInfo'] && !raw['groups']) {
-      raw['groups'] = [raw['groupInfo']];
+    if (raw.groupInfo && !raw.groups) {
+      raw.groups = [raw.groupInfo];
     }
 
-    const entry = raw as unknown as CacheEntry;
     // Basic shape guard — reject entries that are still malformed.
-    if (!entry.session || !Array.isArray(entry.groups) || !entry.groups.length || !entry.groupInfoCachedAt) {
+    if (
+      !raw['session'] ||
+      !Array.isArray(raw['groups']) ||
+      !(raw['groups'] as unknown[]).length ||
+      !raw['groupInfoCachedAt']
+    ) {
       return null;
     }
+    const entry = raw as unknown as CacheEntry;
     return entry;
   } catch {
     return null;

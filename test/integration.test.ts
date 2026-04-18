@@ -67,7 +67,7 @@ let testChildPublicId: string;
 let testFinishEvents: FinishLevelEvent[];
 let familyGroupInfo: GroupInfo | undefined;
 let familyChildLogId: string | undefined;
-let familyChildPublicId: string | undefined;
+let _familyChildPublicId: string | undefined;
 
 // ---------------------------------------------------------------------------
 // Setup / teardown
@@ -132,9 +132,7 @@ beforeAll(async () => {
   const targetGroupName = process.env['ANTON_GROUP'];
   groupInfo =
     (targetGroupName
-      ? allGroupInfos.find(
-          (g) => g.groupName.toLowerCase() === targetGroupName.toLowerCase(),
-        )
+      ? allGroupInfos.find((g) => g.groupName.toLowerCase() === targetGroupName.toLowerCase())
       : undefined) ?? allGroupInfos[0]!;
 
   // ── Capture family group for family-path tests ───────────────────────────
@@ -143,7 +141,7 @@ beforeAll(async () => {
     const familyChild = familyGroupInfo.members.find((m) => m.role === 'pupil' && m.logId);
     if (familyChild) {
       familyChildLogId = familyChild.logId;
-      familyChildPublicId = familyChild.publicId;
+      _familyChildPublicId = familyChild.publicId;
     }
   }
 
@@ -153,7 +151,8 @@ beforeAll(async () => {
   let testMember: (typeof allGroupInfos)[0]['members'][0] | undefined;
   for (const info of allGroupInfos) {
     testMember = info.members.find(
-      (m) => m.role === 'pupil' && m.displayName?.toLowerCase() === CHILD_NAME.toLowerCase() && m.logId,
+      (m) =>
+        m.role === 'pupil' && m.displayName?.toLowerCase() === CHILD_NAME.toLowerCase() && m.logId,
     );
     if (testMember) break;
   }
@@ -168,9 +167,7 @@ beforeAll(async () => {
 
   // Pre-fetch events once and share them across all child-specific tests
   const childEvents = await getUserEvents(testChildLogId);
-  testFinishEvents = childEvents.filter(
-    (e): e is FinishLevelEvent => e.event === 'finishLevel',
-  );
+  testFinishEvents = childEvents.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
 }, 60_000);
 
 afterAll(() => {
@@ -185,7 +182,7 @@ afterAll(() => {
 function nextMonday(fromDate: string): string {
   const d = new Date(fromDate + 'T00:00:00Z');
   const dow = d.getUTCDay(); // 0=Sun, 1=Mon, …
-  const skip = dow === 1 ? 0 : ((8 - dow) % 7 || 7);
+  const skip = dow === 1 ? 0 : (8 - dow) % 7 || 7;
   d.setUTCDate(d.getUTCDate() + skip);
   return d.toISOString().slice(0, 10);
 }
@@ -256,9 +253,7 @@ describe('get_group_assignments', () => {
   it('can filter by child publicId', async () => {
     const events = await getGroupEvents(groupInfo.groupCode);
     const all = parsePinnedBlocks(events);
-    const filtered = all.filter(
-      (b) => b.subgroup === testChildPublicId || b.subgroup == null,
-    );
+    const filtered = all.filter((b) => b.subgroup === testChildPublicId || b.subgroup == null);
     expect(filtered.length).toBeLessThanOrEqual(all.length);
   });
 
@@ -719,9 +714,7 @@ describe('compare_children', () => {
           return { name: m.displayName ?? m.publicId, finishEvents: [] as FinishLevelEvent[] };
         }
         const events = await getUserEvents(m.logId);
-        const finishEvents = events.filter(
-          (e): e is FinishLevelEvent => e.event === 'finishLevel',
-        );
+        const finishEvents = events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
         return { name: m.displayName ?? m.publicId, finishEvents };
       }),
     );
@@ -782,7 +775,8 @@ describe('family group code path (getUserEvents / logId)', () => {
     const pupils = familyGroupInfo.members.filter((m) => m.role === 'pupil');
     const childRows = await Promise.all(
       pupils.map(async (m) => {
-        if (!m.logId) return { name: m.displayName ?? m.publicId, finishEvents: [] as FinishLevelEvent[] };
+        if (!m.logId)
+          return { name: m.displayName ?? m.publicId, finishEvents: [] as FinishLevelEvent[] };
         const events = await getUserEvents(m.logId);
         return {
           name: m.displayName ?? m.publicId,
