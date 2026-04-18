@@ -43,14 +43,20 @@ async function run(
 // Setup guard
 // ---------------------------------------------------------------------------
 
-beforeAll(() => {
-  if (!process.env['ANTON_LOGIN_CODE']) {
-    throw new Error(
-      'ANTON_LOGIN_CODE is not set — cannot run CLI integration tests.\n' +
-        'Export it before running: ANTON_LOGIN_CODE=YOUR-CODE npm test',
-    );
-  }
-});
+/**
+ * Call inside any describe block that requires ANTON_LOGIN_CODE.
+ * Meta tests (--help, --version) and local assignment CRUD tests are exempt.
+ */
+function requireCredentials(): void {
+  beforeAll(() => {
+    if (!process.env['ANTON_LOGIN_CODE']) {
+      throw new Error(
+        'ANTON_LOGIN_CODE is not set — cannot run CLI integration tests.\n' +
+          'Export it before running: ANTON_LOGIN_CODE=YOUR-CODE npm test',
+      );
+    }
+  });
+}
 
 // ---------------------------------------------------------------------------
 // --help / --version (no credentials needed)
@@ -90,6 +96,7 @@ describe('CLI meta', () => {
 const FAR_FUTURE_WEEK = '2099-09-01';
 
 describe('CLI pin / unpin', () => {
+  requireCredentials();
   it('pins a block for the Test child then unpins it', async () => {
     // Resolve a real block puid from the catalogue so we can verify the result
     const { parsed: blocksResult } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
@@ -126,6 +133,7 @@ describe('CLI pin / unpin', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI pins', () => {
+  requireCredentials();
   it('returns pinned blocks for the group', async () => {
     const { parsed } = await run(['pins']);
     expect(Array.isArray(parsed)).toBe(true);
@@ -143,6 +151,7 @@ describe('CLI pins', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI completion', () => {
+  requireCredentials();
   it('returns an assignment completion report for the Test child', async () => {
     const { parsed } = await run(['completion', CHILD_NAME]);
     const result = parsed as { childName: string; assignments: unknown[] };
@@ -157,6 +166,7 @@ describe('CLI completion', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI compare', () => {
+  requireCredentials();
   it('returns a side-by-side comparison of all children', async () => {
     const { parsed } = await run(['compare']);
     const result = parsed as { children: { childName: string; totalStars: number }[] };
@@ -172,6 +182,7 @@ describe('CLI compare', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI status', () => {
+  requireCredentials();
   it('returns valid JSON with parent, group, and children', async () => {
     const { parsed } = await run(['status']);
     const result = parsed as { parent: unknown; group: unknown; children: unknown[] };
@@ -201,6 +212,7 @@ describe('CLI status', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI groups', () => {
+  requireCredentials();
   it('lists all groups with members', async () => {
     const { parsed } = await run(['groups']);
     const groups = parsed as { groupCode: string; groupName: string; members: unknown[] }[];
@@ -218,6 +230,7 @@ describe('CLI groups', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI --group flag', () => {
+  requireCredentials();
   let defaultGroupName: string;
 
   beforeAll(async () => {
@@ -264,6 +277,7 @@ describe('CLI --group flag', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI group', () => {
+  requireCredentials();
   it('returns group info with members and pinnedBlocks', async () => {
     const { parsed } = await run(['group']);
     const result = parsed as { groupCode: string; members: unknown[]; pinnedBlocks: unknown[] };
@@ -278,6 +292,7 @@ describe('CLI group', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI children', () => {
+  requireCredentials();
   it('returns an array of children with publicId', async () => {
     const { parsed } = await run(['children']);
     const children = parsed as { displayName?: string; publicId: string }[];
@@ -301,6 +316,7 @@ describe('CLI children', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI progress', () => {
+  requireCredentials();
   it('returns a progress summary for the Test child', async () => {
     const { parsed } = await run(['progress', CHILD_NAME]);
     const result = parsed as {
@@ -323,6 +339,7 @@ describe('CLI progress', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI weekly', () => {
+  requireCredentials();
   it('returns a weekly summary for the Test child', async () => {
     const { parsed } = await run(['weekly', CHILD_NAME, '--week', '2025-01-06']);
     const result = parsed as {
@@ -343,6 +360,7 @@ describe('CLI weekly', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI events', () => {
+  requireCredentials();
   it('returns events for the Test child', async () => {
     const { parsed } = await run(['events', CHILD_NAME, '-n', '10']);
     const events = parsed as unknown[];
@@ -364,6 +382,7 @@ describe('CLI events', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI subjects', () => {
+  requireCredentials();
   it('returns per-subject stats for the Test child', async () => {
     const { parsed } = await run(['subjects', CHILD_NAME]);
     const result = parsed as { childName: string; subjects: unknown[] };
@@ -377,6 +396,7 @@ describe('CLI subjects', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI timeline', () => {
+  requireCredentials();
   it('returns an activity timeline for the Test child', async () => {
     const { parsed } = await run(['timeline', CHILD_NAME, '--since', '2025-01-01']);
     const result = parsed as { childName: string; activeDays: number; dailyActivity: unknown[] };
@@ -391,6 +411,7 @@ describe('CLI timeline', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI level-progress', () => {
+  requireCredentials();
   it('returns level progress data for the Test child', async () => {
     // Get a real block puid from the catalogue
     const { parsed: topicResult } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
@@ -412,6 +433,7 @@ describe('CLI level-progress', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI plans', () => {
+  requireCredentials();
   it('returns plans without filters (filtered to default language)', async () => {
     const { parsed } = await run(['plans']);
     expect(Array.isArray(parsed)).toBe(true);
@@ -442,6 +464,7 @@ describe('CLI plans', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI topics', () => {
+  requireCredentials();
   it('returns topics for c-mat-4', async () => {
     const { parsed } = await run(['topics', 'c-mat-4']);
     const result = parsed as { project: string; topics: { index: number; title: string }[] };
@@ -457,6 +480,7 @@ describe('CLI topics', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI blocks', () => {
+  requireCredentials();
   it('returns blocks for topic index 0 of c-mat-4', async () => {
     const { parsed } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
     const result = parsed as {
@@ -475,6 +499,7 @@ describe('CLI blocks', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI plan', () => {
+  requireCredentials();
   it('returns the full hierarchy for c-mat-4', async () => {
     const { parsed } = await run(['plan', 'c-mat-4']);
     const result = parsed as { project: string; topics: { title: string }[] };
@@ -488,6 +513,7 @@ describe('CLI plan', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI lesson', () => {
+  requireCredentials();
   it('returns lesson content for a real level fileId', async () => {
     const { parsed: topicResult } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
     const blocks = (topicResult as { blocks: { levels: { fileId?: string }[] }[] }).blocks;
@@ -505,6 +531,7 @@ describe('CLI lesson', () => {
 // ---------------------------------------------------------------------------
 
 describe('CLI family group (groupType === "family")', () => {
+  requireCredentials();
   let familyGroupName: string | undefined;
   let familyChildName: string | undefined;
 

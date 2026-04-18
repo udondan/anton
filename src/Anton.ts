@@ -154,14 +154,21 @@ export class Anton {
     if (this.parentSession) return;
     this.parentSession = session;
 
-    if (groups) {
-      // Zero API calls — restore group membership from cache.
-      this.allGroups = groups;
-      return;
-    }
+    try {
+      if (groups) {
+        // Zero API calls — restore group membership from cache.
+        this.allGroups = groups;
+        return;
+      }
 
-    // Group info TTL expired — re-fetch using the known groupCodes.
-    this.allGroups = await this.fetchAllGroups(groupCodes, session);
+      // Group info TTL expired — re-fetch using the known groupCodes.
+      this.allGroups = await this.fetchAllGroups(groupCodes, session);
+    } catch (err) {
+      // Reset to clean state so connect() can perform a full login.
+      this.parentSession = null;
+      this.allGroups = [];
+      throw err;
+    }
   }
 
   /**

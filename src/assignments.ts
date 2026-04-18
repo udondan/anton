@@ -91,12 +91,16 @@ export function updateAssignment(
   const idx = store.assignments.findIndex((a) => a.id === id);
   if (idx === -1) throw new Error(`Assignment not found: ${id}`);
   const a = store.assignments[idx];
-  if (updates.status) a.status = updates.status;
+  if (updates.status !== undefined) {
+    a.status = updates.status;
+    if (updates.status === 'completed') {
+      if (!a.completedAt) a.completedAt = new Date().toISOString();
+    } else {
+      a.completedAt = undefined;
+    }
+  }
   if (updates.note !== undefined) a.note = updates.note;
   if (updates.lessonTitle !== undefined) a.lessonTitle = updates.lessonTitle;
-  if (updates.status === 'completed' && !a.completedAt) {
-    a.completedAt = new Date().toISOString();
-  }
   save(store);
   return a;
 }
