@@ -105,7 +105,7 @@ export class Anton {
     } else if (this.config.logId) {
       this.parentSession = await loginWithLogId(this.config.logId);
     } else {
-      return;
+      throw new Error('Anton requires either loginCode or logId in config.');
     }
 
     // Resolve all family groups
@@ -195,8 +195,8 @@ export class Anton {
               member.logId = desc.logId;
             }
           }
-        } catch {
-          // non-fatal — members will still have publicIds
+        } catch (err) {
+          console.warn(`[anton] Could not fetch member descriptions for group ${code}: ${(err as Error).message}`);
         }
         return info;
       }),

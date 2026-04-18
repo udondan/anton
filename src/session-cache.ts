@@ -112,9 +112,9 @@ export function writeCache(
       groups,
       groupInfoCachedAt: Date.now(),
     };
-    writeFileSync(path, JSON.stringify(entry, null, 2));
-  } catch {
-    // non-fatal
+    writeFileSync(path, JSON.stringify(entry, null, 2), { mode: 0o600 });
+  } catch (err) {
+    console.warn(`[anton] Failed to write session cache: ${(err as Error).message}`);
   }
 }
 

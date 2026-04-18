@@ -97,6 +97,7 @@ async function pllsCall<T>(
 
   const cfg: AxiosRequestConfig = { headers: BASE_HEADERS };
   const response = await axios.post<T>(url, body, cfg);
+  assertOk(response.data);
   return response.data;
 }
 
