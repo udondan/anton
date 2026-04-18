@@ -1,4 +1,6 @@
-# @udondan/anton – Developer Notes
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What this is
 
@@ -7,116 +9,81 @@ monitoring of children's learning. It ships three interfaces sharing the same SD
 
 - **SDK** — importable `Anton` class for use in other Node.js projects
 - **CLI** — `anton` executable (global install or `npx`)
-- **MCP server** — started via `anton mcp`, exposes all 21 tools over stdio
+- **MCP server** — started via `anton mcp`, exposes all 24 tools over stdio
 
-## Build & run
+## Build & test
 
 ```bash
-npm install
-npm run build        # tsc → dist/
+mise run install           # install dependencies
+mise run build             # tsc → dist/
+mise run dev               # tsc --watch
+mise run test              # run all tests (vitest)
+mise run test:watch        # vitest in watch mode
+bun run test test/sdk.test.ts   # run a single test file
 ```
 
-Dev watch: `npm run dev`
+Integration tests hit the real anton.app API and require `ANTON_LOGIN_CODE` to be set:
+
+```bash
+ANTON_LOGIN_CODE=YOUR-CODE mise run test
+```
+
+**Tests expect `dist/` to exist — always `mise run build` first.**
 
 ## Configuration
 
 ```bash
-# Parent account (required – discovers family group automatically)
+# Parent account (required – discovers family groups automatically)
 export ANTON_LOGIN_CODE='YOUR-CODE'
 
 # Optional: alternative to login code
 export ANTON_LOG_ID='L-...'
 
+# Optional: default group name when parent belongs to multiple groups
+# Matched case-insensitively against groupName. Falls back to the first group.
+export ANTON_GROUP='Schroeder'
+
 # Optional: custom assignments file (default: ~/.config/anton/assignments.json)
 export ANTON_ASSIGNMENTS_FILE='/path/to/assignments.json'
 ```
 
-## SDK usage
+## Architecture
 
-```ts
-import { Anton } from '@udondan/anton';
+The package ships three interfaces over a shared SDK core:
 
-const anton = new Anton({ loginCode: 'YOUR-CODE' });
-await anton.connect();
-
-console.log(await anton.getStatus());
-console.log(await anton.getWeeklySummary({ childName: 'Emma' }));
+```text
+src/
+  Anton.ts        — SDK class: all public methods, business logic, no HTTP
+  client.ts       — Low-level HTTP: login, event log, group logger, content API
+  analysis.ts     — Pure computation over event arrays (no HTTP, no Anton class)
+  assignments.ts  — Local JSON store at ~/.config/anton/assignments.json
+  session-cache.ts— CLI-only: session + group info cache at ~/.config/anton/session.json
+  mcp.ts          — MCP server wrapping Anton class as 23 tools over stdio
+  cli.ts          — commander-based CLI; delegates auth to connectAnton() which
+                    reads/writes the session cache before calling Anton.connect()
+  types.ts        — All exported TypeScript types
+  index.ts        — SDK entry point (re-exports Anton + types)
 ```
 
-## CLI usage
+**Data flow**: CLI/MCP → `Anton` class → `client.ts` (HTTP) / `analysis.ts` (computation)
 
-```bash
-# When installed globally:
-anton --help
-anton mcp                          # start MCP server
-anton status                       # show auth + group info
-anton group                        # show group + pinned blocks
-anton children                     # list children
-anton plans --subject mat          # browse maths courses
-anton progress Emma                # show progress for Emma
-anton weekly Emma --week 2025-09-01
+**Multi-group support**: A parent can belong to multiple groups. `connect()` discovers all group codes from `isGroupMember` events and fetches all groups in parallel. The `Anton` class stores `allGroups: GroupInfo[]`. Group selection priority: explicit `groupName` param per method > `AntonConfig.groupName` (set from `ANTON_GROUP` env var by CLI/MCP) > first group (index 0).
 
-# Or via npx:
-ANTON_LOGIN_CODE=YOUR-CODE npx @udondan/anton mcp
-```
+**Session cache** lives only in `cli.ts` + `session-cache.ts`. The `Anton` class has two entry points for authentication:
 
-## MCP client config (Claude Desktop / Claude Code)
+- `connect()` — full login (SDK, MCP)
+- `connectFromCache(session, groupCodes, groups?)` — zero or N API calls (CLI only)
 
-```json
-{
-  "mcpServers": {
-    "anton": {
-      "command": "anton",
-      "args": ["mcp"],
-      "env": {
-        "ANTON_LOGIN_CODE": "YOUR-CODE"
-      }
-    }
-  }
-}
-```
+The two-layer cache: session is kept until an auth error; groups has a 10-minute TTL and all groups are re-fetched transparently without re-logging in. Cache migrates from old single-`groupInfo` format automatically.
 
-Or without global install:
+**Key conventions:**
 
-```json
-{
-  "mcpServers": {
-    "anton": {
-      "command": "node",
-      "args": ["/path/to/dist/cli.js", "mcp"],
-      "env": {
-        "ANTON_LOGIN_CODE": "YOUR-CODE"
-      }
-    }
-  }
-}
-```
-
-## Available tools (23 total)
-
-| Tool | Description |
-| ---- | ----------- |
-| `get_status` | Auth status, group info, configured children |
-| `get_group` | Family group members (publicIds, roles) + current pinned blocks |
-| `get_group_assignments` | Lesson blocks assigned to the group (filterable by child/week) |
-| `pin_block` | Assign a lesson block to the group or a specific child. Accepts `childName` (resolved internally) and `project`+`topicIndex/topicTitle`+`blockIndex/blockTitle` (resolved internally) |
-| `get_progress` | Progress summary for a configured child (finishLevel events) |
-| `get_events` | Raw event log for a configured child |
-| `get_level_progress` | Per-level performance for a child by publicId (reviewReport API) |
-| `list_children` | List configured child accounts |
-| `check_assignment_completion` | Which assigned blocks a child has completed (levels done vs total) |
-| `get_weekly_summary` | Weekly rollup: levels, time, stars, assigned vs self-directed ratio |
-| `get_subject_summary` | Per-subject accuracy, stars, time, and trend (improving/declining/stable) |
-| `get_activity_timeline` | Active days, streaks, gaps, and daily breakdown |
-| `compare_children` | Side-by-side comparison of all configured children |
-| `list_plans` | Browse ~285 courses by subject/grade |
-| `list_topics` | Lightweight: topic titles + indices for a course (use before get_topic_blocks) |
-| `get_topic_blocks` | Blocks + levels for a single topic — identified by index or title |
-| `get_plan` | Full topic→block→level hierarchy for a course (large response — prefer list_topics + get_topic_blocks) |
-| `get_lesson` | Lesson content (questions/trainers) by fileId |
-| `list_assignments` | Local assignment list |
-| `assign_lesson` | Create a local assignment |
-| `update_assignment` / `delete_assignment` | Manage local assignments |
+- All `client.ts` functions are standalone exports (not class methods) that take explicit auth parameters.
+- `Anton.ts` orchestrates client calls and is the only place that holds `parentSession` and `groupInfo` state.
+- `analysis.ts` functions are pure — they receive event arrays and return computed results. Do not add HTTP calls there.
+- Assignment IDs are UUIDs generated in `assignments.ts`; the store is a flat JSON array.
+- Block resolution (project → topic → block) is done inline in `Anton.pinBlock()` — there is no separate resolver.
+- The `blockPath` format is `/../{project}/{topicSlug}/{blockSlug}/block`; it is derived from puids, not stored in the API response directly.
 
 ## Discovered API endpoints
 
@@ -169,12 +136,34 @@ Or without global install:
 { "event": "setGroupMember", "role": "pupil", "publicId": "P-P7R1oC6TfbGM7LzrEcKROb5SZTvb4PtI" }
 ```
 
-## Workflow: assign a lesson to a child
+## MCP tools (23 total)
 
-1. `list_plans` → find the course (e.g. `c-mat-4`)
-2. `get_plan { project: "c-mat-4" }` → browse topics/blocks
-3. Copy the `blockPuid` and `blockPath` from the desired block
-4. `pin_block { blockPuid, blockPath, childPublicId, weekStartAt }` → posts to group logger
+| Tool | Description |
+| ---- | ----------- |
+| `get_status` | Auth status, active group info, total group count, configured children |
+| `list_groups` | All groups the parent belongs to, with full member lists |
+| `get_group` | Family group members (publicIds, roles) + current pinned blocks. Optional `group` param. |
+| `get_group_assignments` | Lesson blocks assigned to the group (filterable by child/week). Optional `group` param. |
+| `pin_block` | Assign a lesson block to the group or a specific child. Accepts `childName` (resolved internally) and `project`+`topicIndex/topicTitle`+`blockIndex/blockTitle` (resolved internally). Optional `group` param. |
+| `unpin_block` | Remove a pinned block from the group. Optional `group` param. |
+| `get_progress` | Progress summary for a configured child (finishLevel events) |
+| `get_events` | Raw event log for a configured child |
+| `get_level_progress` | Per-level performance for a child by publicId (reviewReport API) |
+| `list_children` | List configured child accounts. Optional `group` param. |
+| `check_assignment_completion` | Which assigned blocks a child has completed (levels done vs total). Optional `group` param. |
+| `get_weekly_summary` | Weekly rollup: levels, time, stars, assigned vs self-directed ratio. Optional `group` param. |
+| `get_subject_summary` | Per-subject accuracy, stars, time, and trend (improving/declining/stable) |
+| `get_activity_timeline` | Active days, streaks, gaps, and daily breakdown |
+| `compare_children` | Side-by-side comparison of all configured children. Optional `group` param. |
+| `list_plans` | Browse ~285 courses by subject/grade |
+| `list_topics` | Lightweight: topic titles + indices for a course (use before get_topic_blocks) |
+| `get_topic_blocks` | Blocks + levels for a single topic — identified by index or title |
+| `get_plan` | Full topic→block→level hierarchy for a course (large response — prefer list_topics + get_topic_blocks) |
+| `get_lesson` | Lesson content (questions/trainers) by fileId |
+| `list_assignments` | Local assignment list |
+| `assign_lesson` | Create a local assignment |
+| `update_assignment` | Update a local assignment |
+| `delete_assignment` | Delete a local assignment |
 
 ## Known limitations
 
@@ -182,17 +171,3 @@ Or without global install:
 - **Children's publicIds only** – `get_group` returns publicIds, not names. Map them via `get_events`/`finishLevel` or by having child login codes in config.
 - **Token lifetime unknown** – restart server if auth fails after a long session
 - **Rate limits unknown** – avoid aggressive polling
-
-## Source structure
-
-```text
-src/
-  Anton.ts        SDK core class — all business logic, public API
-  index.ts        SDK package entry point (re-exports Anton + types)
-  cli.ts          CLI entry point (bin: anton)
-  mcp.ts          MCP server — wraps Anton class as 23 MCP tools
-  client.ts       Low-level anton.app HTTP client
-  analysis.ts     Pure analysis functions (no HTTP)
-  assignments.ts  Local JSON-backed assignment store
-  types.ts        TypeScript types (all public)
-```

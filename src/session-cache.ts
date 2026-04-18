@@ -8,7 +8,7 @@
  *   session   — cached indefinitely; cleared only when an API call proves the
  *               token is no longer valid (no arbitrary TTL).
  *
- *   groupInfo — cached for GROUP_INFO_TTL_MS (10 minutes); re-fetched
+ *   groups    — cached for GROUP_INFO_TTL_MS (10 minutes); re-fetched
  *               transparently when stale.  Covers group members, display names,
  *               and logIds.  Pin/assignment data is never cached here — every
  *               command that needs it fetches fresh data itself.
@@ -40,9 +40,9 @@ export interface CacheEntry {
   credential: string;
   /** Full parent session from loginWithCode — kept until an auth error occurs. */
   session: Session;
-  /** Enriched group member info (names, logIds, publicIds). */
-  groupInfo: GroupInfo;
-  /** Unix timestamp (ms) when groupInfo was last fetched. */
+  /** All enriched group infos for the parent account. */
+  groups: GroupInfo[];
+  /** Unix timestamp (ms) when groups were last fetched. */
   groupInfoCachedAt: number;
 }
 
@@ -62,17 +62,28 @@ export function defaultCachePath(): string {
  * Read the cached entry for the given credential.
  *
  * Returns null if the file does not exist or the credential does not match.
- * The entry is returned even when groupInfo is stale — callers use
+ * The entry is returned even when groups is stale — callers use
  * isGroupInfoFresh() to decide whether to re-fetch.
+ *
+ * Migrates old single-group format (groupInfo: GroupInfo) to groups: GroupInfo[].
  */
 export function readCache(credential: string, path = defaultCachePath()): CacheEntry | null {
   if (!existsSync(path)) return null;
   try {
-    const raw = JSON.parse(readFileSync(path, 'utf8')) as CacheEntry;
-    if (raw.credential !== credential) return null;
-    // Basic shape guard — reject entries written by older versions of this module.
-    if (!raw.session || !raw.groupInfo || !raw.groupInfoCachedAt) return null;
-    return raw;
+    const raw = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+    if (raw['credential'] !== credential) return null;
+
+    // Migrate from old single-group format written by earlier versions.
+    if (raw['groupInfo'] && !raw['groups']) {
+      raw['groups'] = [raw['groupInfo']];
+    }
+
+    const entry = raw as unknown as CacheEntry;
+    // Basic shape guard — reject entries that are still malformed.
+    if (!entry.session || !Array.isArray(entry.groups) || !entry.groups.length || !entry.groupInfoCachedAt) {
+      return null;
+    }
+    return entry;
   } catch {
     return null;
   }
@@ -90,7 +101,7 @@ export function isGroupInfoFresh(entry: CacheEntry): boolean {
 export function writeCache(
   credential: string,
   session: Session,
-  groupInfo: GroupInfo,
+  groups: GroupInfo[],
   path = defaultCachePath(),
 ): void {
   try {
@@ -98,7 +109,7 @@ export function writeCache(
     const entry: CacheEntry = {
       credential,
       session,
-      groupInfo,
+      groups,
       groupInfoCachedAt: Date.now(),
     };
     writeFileSync(path, JSON.stringify(entry, null, 2));
@@ -108,15 +119,15 @@ export function writeCache(
 }
 
 /**
- * Update only the groupInfo + timestamp in an existing cache entry,
+ * Update only the groups + timestamp in an existing cache entry,
  * leaving the session untouched.
  */
 export function updateGroupInfoCache(
   entry: CacheEntry,
-  groupInfo: GroupInfo,
+  groups: GroupInfo[],
   path = defaultCachePath(),
 ): void {
-  writeCache(entry.credential, entry.session, groupInfo, path);
+  writeCache(entry.credential, entry.session, groups, path);
 }
 
 /** Delete the cache file. Silently ignores errors. */

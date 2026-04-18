@@ -3,34 +3,37 @@
  * Anton CLI
  *
  * Usage:
- *   anton mcp                                   Start the MCP server (stdio)
- *   anton status                                Auth and group status
- *   anton group                                 Family group + pinned blocks
- *   anton children                              List children in the group
- *   anton pins [--week date] [--child name]     Group assignment (pinned blocks)
- *   anton pin <project> [--topic-index n] ...   Assign a block to the group
- *   anton unpin <blockPuid> <weekStartAt>        Remove a pinned block
- *   anton plans [--subject s] [-g n]            Browse lesson catalogue
- *   anton topics <project>                      List topics for a course
- *   anton blocks <project> [--topic-index n]    List blocks in a topic
- *   anton plan <project>                        Full topic→block→level hierarchy
- *   anton lesson <fileId>                       Lesson content (questions/trainers)
- *   anton progress <child>                      Progress summary for a child
- *   anton events <child> [--type t] [-n n]      Raw event log for a child
- *   anton level-progress <levelPuid> <child>    Per-level performance
- *   anton weekly <child> [--week date]          Weekly activity summary
- *   anton subjects <child> [--subject s]        Per-subject accuracy and trend
- *   anton timeline <child> [--since date]       Active days, streaks, gaps
- *   anton completion <child> [--week date]      Assignment completion status
- *   anton compare                               Side-by-side child comparison
- *   anton assignments [--child name] [--status] Local assignment list
- *   anton assign <child> <fileId>               Create a local assignment
- *   anton update-assignment <id> [--status s]   Update a local assignment
- *   anton delete-assignment <id>                Delete a local assignment
+ *   anton [--group name] mcp                              Start the MCP server (stdio)
+ *   anton [--group name] status                           Auth and group status
+ *   anton [--group name] groups                           List all groups the parent belongs to
+ *   anton [--group name] group                            Family group + pinned blocks
+ *   anton [--group name] children                         List children in the group
+ *   anton [--group name] pins [--week date] [--child n]   Group assignments (pinned blocks)
+ *   anton [--group name] pin <project> [options]          Assign a block to the group
+ *   anton [--group name] unpin <blockPuid> <weekStartAt>  Remove a pinned block
+ *   anton [--group name] plans [--subject s] [-g n]       Browse lesson catalogue
+ *   anton [--group name] topics <project>                 List topics for a course
+ *   anton [--group name] blocks <project> [options]       List blocks in a topic
+ *   anton [--group name] plan <project>                   Full topic→block→level hierarchy
+ *   anton [--group name] lesson <fileId>                  Lesson content
+ *   anton [--group name] progress <child>                 Progress summary for a child
+ *   anton [--group name] events <child> [--type t] [-n n] Raw event log for a child
+ *   anton [--group name] level-progress <levelPuid> <child> Per-level performance
+ *   anton [--group name] weekly <child> [--week date]     Weekly activity summary
+ *   anton [--group name] subjects <child> [--subject s]   Per-subject accuracy and trend
+ *   anton [--group name] timeline <child> [--since date]  Active days, streaks, gaps
+ *   anton [--group name] completion <child> [--week date] Assignment completion status
+ *   anton [--group name] compare                          Side-by-side child comparison
+ *   anton assignments [--child name] [--status]           Local assignment list
+ *   anton assign <child> <fileId>                         Create a local assignment
+ *   anton update-assignment <id> [--status s]             Update a local assignment
+ *   anton delete-assignment <id>                          Delete a local assignment
  *
  * Configuration (environment variables):
  *   ANTON_LOGIN_CODE   Parent 8-character login code (required)
  *   ANTON_LOG_ID       Alternative: parent log ID
+ *   ANTON_GROUP        Default group name when parent belongs to multiple groups
+ *                      (overridden by the global --group flag)
  */
 
 import { Command } from 'commander';
@@ -49,13 +52,15 @@ function err(msg: string): void {
 function loadAnton(): Anton {
   const loginCode = process.env['ANTON_LOGIN_CODE'];
   const logId = process.env['ANTON_LOG_ID'];
+  // Global --group flag takes precedence over ANTON_GROUP env var.
+  const groupName = program.opts<{ group?: string }>().group ?? process.env['ANTON_GROUP'];
 
   if (!loginCode && !logId) {
     err('No credentials configured. Set ANTON_LOGIN_CODE=<code> or ANTON_LOG_ID=<id>.');
     process.exit(1);
   }
 
-  return new Anton({ loginCode, logId });
+  return new Anton({ loginCode, logId, groupName });
 }
 
 /**
@@ -81,19 +86,19 @@ async function connectAnton(anton: Anton): Promise<void> {
     if (cached) {
       const fresh = isGroupInfoFresh(cached);
       try {
-        // Always pass the groupCode (available even on stale entries).
-        // Pass groupInfo only when it's within the 10-minute TTL — otherwise
-        // connectFromCache re-fetches group events using the known groupCode.
+        // Always pass all groupCodes (available even on stale entries).
+        // Pass groups only when within the 10-minute TTL — otherwise
+        // connectFromCache re-fetches all groups using the known groupCodes.
         await anton.connectFromCache(
           cached.session,
-          cached.groupInfo.groupCode,
-          fresh ? cached.groupInfo : undefined,
+          cached.groups.map((g) => g.groupCode),
+          fresh ? cached.groups : undefined,
         );
         // If group info was re-fetched, update just that part of the cache
         // (session remains untouched).
         if (!fresh) {
           const data = anton.getCacheData();
-          if (data) updateGroupInfoCache(cached, data.groupInfo);
+          if (data) updateGroupInfoCache(cached, data.groups);
         }
         return;
       } catch {
@@ -108,7 +113,7 @@ async function connectAnton(anton: Anton): Promise<void> {
   // Persist the full session + group info for future invocations.
   if (!noCache && credential) {
     const data = anton.getCacheData();
-    if (data) writeCache(credential, data.session, data.groupInfo);
+    if (data) writeCache(credential, data.session, data.groups);
   }
 }
 
@@ -126,7 +131,8 @@ program
   .name('anton')
   .description("CLI for the @udondan/anton SDK — monitor children's learning on anton.app")
   .version('0.1.0')
-  .option('--no-cache', 'Skip the session cache and always perform a fresh login');
+  .option('--no-cache', 'Skip the session cache and always perform a fresh login')
+  .option('--group <name>', 'Group name to operate on (overrides ANTON_GROUP env var)');
 
 // ── mcp ──────────────────────────────────────────────────────────────────────
 
@@ -153,6 +159,17 @@ program
     const anton = loadAnton();
     await connectAnton(anton);
     print(anton.getStatus());
+  });
+
+// ── groups ───────────────────────────────────────────────────────────────────
+
+program
+  .command('groups')
+  .description('List all groups the parent account belongs to, with their members')
+  .action(async () => {
+    const anton = loadAnton();
+    await connectAnton(anton);
+    print(anton.listGroups());
   });
 
 // ── group ────────────────────────────────────────────────────────────────────

@@ -182,7 +182,77 @@ describe('CLI status', () => {
     expect(parent.logId).toBeTruthy();
     expect(parent.displayName).toBeTruthy();
   });
+
+  it('includes totalGroups count', async () => {
+    const { parsed } = await run(['status']);
+    const result = parsed as { totalGroups: number };
+    expect(typeof result.totalGroups).toBe('number');
+    expect(result.totalGroups).toBeGreaterThan(0);
+  });
 }, 30_000);
+
+// ---------------------------------------------------------------------------
+// groups
+// ---------------------------------------------------------------------------
+
+describe('CLI groups', () => {
+  it('lists all groups with members', async () => {
+    const { parsed } = await run(['groups']);
+    const groups = parsed as Array<{ groupCode: string; groupName: string; members: unknown[] }>;
+    expect(Array.isArray(groups)).toBe(true);
+    expect(groups.length).toBeGreaterThan(0);
+    expect(groups[0]!.groupCode).toBeTruthy();
+    expect(groups[0]!.groupName).toBeTruthy();
+    expect(Array.isArray(groups[0]!.members)).toBe(true);
+    expect(groups[0]!.members.length).toBeGreaterThan(0);
+  });
+}, 30_000);
+
+// ---------------------------------------------------------------------------
+// --group flag / ANTON_GROUP env var
+// ---------------------------------------------------------------------------
+
+describe('CLI --group flag', () => {
+  let defaultGroupName: string;
+
+  beforeAll(async () => {
+    const { parsed } = await run(['groups']);
+    defaultGroupName = (parsed as Array<{ groupName: string }>)[0]!.groupName;
+  });
+
+  it('--group <name> group returns same groupCode as default', async () => {
+    const [withFlag, without] = await Promise.all([
+      run(['--group', defaultGroupName, 'group']),
+      run(['group']),
+    ]);
+    const a = withFlag.parsed as { groupCode: string };
+    const b = without.parsed as { groupCode: string };
+    expect(a.groupCode).toBe(b.groupCode);
+  });
+
+  it('--group <unknown> group exits non-zero', async () => {
+    await expect(run(['--group', 'NoSuchGroupXYZ', 'group'])).rejects.toMatchObject({ code: 1 });
+  });
+
+  it('--group <name> children returns same count as default', async () => {
+    const [withFlag, without] = await Promise.all([
+      run(['--group', defaultGroupName, 'children']),
+      run(['children']),
+    ]);
+    expect((withFlag.parsed as unknown[]).length).toBe((without.parsed as unknown[]).length);
+  });
+
+  it('ANTON_GROUP env var selects a group by name', async () => {
+    const { parsed } = await run(['group'], { ...ENV, ANTON_GROUP: defaultGroupName });
+    expect((parsed as { groupCode: string }).groupCode).toBeTruthy();
+  });
+
+  it('ANTON_GROUP with invalid name exits non-zero', async () => {
+    await expect(
+      run(['group'], { ...ENV, ANTON_GROUP: 'NoSuchGroupXYZ' }),
+    ).rejects.toMatchObject({ code: 1 });
+  });
+}, 60_000);
 
 // ---------------------------------------------------------------------------
 // group

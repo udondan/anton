@@ -71,6 +71,12 @@ describe('Anton.connect / getStatus', () => {
     expect(status.group!.memberCount).toBeGreaterThan(0);
   });
 
+  it('returns totalGroups count', () => {
+    const status = anton.getStatus();
+    expect(typeof status.totalGroups).toBe('number');
+    expect(status.totalGroups).toBeGreaterThan(0);
+  });
+
   it('lists pupil children', () => {
     const status = anton.getStatus();
     expect(status.children.length).toBeGreaterThan(0);
@@ -82,6 +88,80 @@ describe('Anton.connect / getStatus', () => {
   it('connect() is idempotent — second call is a no-op', async () => {
     await expect(anton.connect()).resolves.toBeUndefined();
   });
+});
+
+// ---------------------------------------------------------------------------
+// listGroups
+// ---------------------------------------------------------------------------
+
+describe('Anton.listGroups', () => {
+  it('returns at least one group', () => {
+    const groups = anton.listGroups();
+    expect(groups.length).toBeGreaterThan(0);
+  });
+
+  it('each group has required fields', () => {
+    for (const g of anton.listGroups()) {
+      expect(g.groupCode).toBeTruthy();
+      expect(g.groupName).toBeTruthy();
+      expect(g.groupType).toBeTruthy();
+      expect(Array.isArray(g.members)).toBe(true);
+    }
+  });
+
+  it('groups include members with publicId and role', () => {
+    for (const g of anton.listGroups()) {
+      expect(g.members.length).toBeGreaterThan(0);
+      for (const m of g.members) {
+        expect(m.publicId).toBeTruthy();
+        expect(m.role).toBeTruthy();
+      }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Multi-group selection (groupName parameter)
+// ---------------------------------------------------------------------------
+
+describe('Anton multi-group selection', () => {
+  let defaultGroupName: string;
+
+  beforeAll(() => {
+    defaultGroupName = anton.listGroups()[0]!.groupName;
+  });
+
+  it('getGroup accepts groupName and returns the same group as default', async () => {
+    const [named, unnamed] = await Promise.all([
+      anton.getGroup({ groupName: defaultGroupName }),
+      anton.getGroup(),
+    ]);
+    expect(named.groupCode).toBe(unnamed.groupCode);
+  });
+
+  it('getGroup throws for an unknown group name', async () => {
+    await expect(anton.getGroup({ groupName: 'NoSuchGroupXYZ' })).rejects.toThrow(/not found/i);
+  });
+
+  it('listChildren accepts groupName and returns the same children as default', () => {
+    const named = anton.listChildren({ groupName: defaultGroupName });
+    const unnamed = anton.listChildren();
+    expect(named.length).toBe(unnamed.length);
+  });
+
+  it('listChildren throws for an unknown group name', () => {
+    expect(() => anton.listChildren({ groupName: 'NoSuchGroupXYZ' })).toThrow(/not found/i);
+  });
+
+  it('getGroupAssignments accepts groupName', async () => {
+    const result = await anton.getGroupAssignments({ groupName: defaultGroupName });
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it('compareChildren accepts groupName', async () => {
+    const result = await anton.compareChildren({ groupName: defaultGroupName });
+    expect(Array.isArray((result as { children: unknown[] }).children)).toBe(true);
+  }, 30_000);
 });
 
 // ---------------------------------------------------------------------------

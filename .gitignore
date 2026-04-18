@@ -1,7 +1,5 @@
 node_modules/
 dist/
-.mcp.json
 .playwright-mcp
-.mcp.json
+.env
 .claude
-*.docx

@@ -16,7 +16,20 @@ import {
 import { Anton } from './Anton.js';
 
 // ---------------------------------------------------------------------------
-// Tool definitions (unchanged from original)
+// Shared parameter snippets
+// ---------------------------------------------------------------------------
+
+const groupParam = {
+  group: {
+    type: 'string',
+    description:
+      'Group name to operate on. Only needed when the parent belongs to multiple groups. ' +
+      'Defaults to the first group or the ANTON_GROUP environment variable.',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Tool definitions
 // ---------------------------------------------------------------------------
 
 const TOOLS: Tool[] = [
@@ -25,17 +38,32 @@ const TOOLS: Tool[] = [
     name: 'get_status',
     description:
       'Show authentication and family group status. ' +
-      'Returns parent account info, group info, and any configured child accounts.',
-    inputSchema: { type: 'object', properties: {}, required: [] },
+      'Returns parent account info, active group info, total group count, and any configured child accounts.',
+    inputSchema: {
+      type: 'object',
+      properties: { ...groupParam },
+      required: [],
+    },
   },
 
-  // ── Group / Children ─────────────────────────────────────────────────────
+  // ── Groups / Children ────────────────────────────────────────────────────
+  {
+    name: 'list_groups',
+    description:
+      'List all groups the parent account belongs to. ' +
+      'Returns each group with its name, type, and full member list (publicIds, roles, display names).',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+  },
   {
     name: 'get_group',
     description:
-      'Get the family group details: name, type, members with their publicIds and roles. ' +
+      'Get a family group details: name, type, members with their publicIds and roles. ' +
       'Also shows current lesson assignments (pinned blocks) per member.',
-    inputSchema: { type: 'object', properties: {}, required: [] },
+    inputSchema: {
+      type: 'object',
+      properties: { ...groupParam },
+      required: [],
+    },
   },
   {
     name: 'get_group_assignments',
@@ -54,6 +82,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Filter to a specific week start date (YYYY-MM-DD Monday)',
         },
+        ...groupParam,
       },
       required: [],
     },
@@ -112,6 +141,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Child publicId. Alternative to childName when publicId is known.',
         },
+        ...groupParam,
       },
       required: [],
     },
@@ -136,6 +166,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Optional: publicId of the child the pin belongs to (to disambiguate)',
         },
+        ...groupParam,
       },
       required: ['blockPuid', 'weekStartAt'],
     },
@@ -224,7 +255,11 @@ const TOOLS: Tool[] = [
     name: 'list_children',
     description:
       'List configured children (those with login codes) and their session info.',
-    inputSchema: { type: 'object', properties: {}, required: [] },
+    inputSchema: {
+      type: 'object',
+      properties: { ...groupParam },
+      required: [],
+    },
   },
   {
     name: 'list_plans',
@@ -345,6 +380,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Filter to a specific week (YYYY-MM-DD Monday). Omit for all weeks.',
         },
+        ...groupParam,
       },
       required: ['childName'],
     },
@@ -362,6 +398,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Monday of the week (YYYY-MM-DD). Defaults to the current week.',
         },
+        ...groupParam,
       },
       required: ['childName'],
     },
@@ -405,7 +442,11 @@ const TOOLS: Tool[] = [
     description:
       'Side-by-side comparison of all configured children: ' +
       'total stars, accuracy, time spent, active days, levels completed, and subjects covered.',
-    inputSchema: { type: 'object', properties: {}, required: [] },
+    inputSchema: {
+      type: 'object',
+      properties: { ...groupParam },
+      required: [],
+    },
   },
 
   // ── Local assignments ─────────────────────────────────────────────────────
@@ -488,28 +529,37 @@ export async function startMcpServer(anton: Anton): Promise<void> {
 
     try {
       let result: unknown;
+      const group = args['group'] as string | undefined;
 
       switch (name) {
         case 'get_status':
           result = anton.getStatus();
           break;
+        case 'list_groups':
+          result = anton.listGroups();
+          break;
         case 'get_group':
-          result = await anton.getGroup();
+          result = await anton.getGroup({ groupName: group });
           break;
         case 'get_group_assignments':
           result = await anton.getGroupAssignments({
             childPublicId: args['childPublicId'] as string | undefined,
             week: args['week'] as string | undefined,
+            groupName: group,
           });
           break;
         case 'pin_block':
-          result = await anton.pinBlock(args as Parameters<typeof anton.pinBlock>[0]);
+          result = await anton.pinBlock({
+            ...(args as Parameters<typeof anton.pinBlock>[0]),
+            groupName: group,
+          });
           break;
         case 'unpin_block':
           result = await anton.unpinBlock({
             blockPuid: args['blockPuid'] as string,
             weekStartAt: args['weekStartAt'] as string,
             childPublicId: args['childPublicId'] as string | undefined,
+            groupName: group,
           });
           break;
         case 'get_progress':
@@ -534,7 +584,7 @@ export async function startMcpServer(anton: Anton): Promise<void> {
           });
           break;
         case 'list_children':
-          result = anton.listChildren();
+          result = anton.listChildren({ groupName: group });
           break;
         case 'list_plans':
           result = await anton.listPlans({
@@ -563,12 +613,14 @@ export async function startMcpServer(anton: Anton): Promise<void> {
           result = await anton.checkAssignmentCompletion({
             childName: args['childName'] as string,
             week: args['week'] as string | undefined,
+            groupName: group,
           });
           break;
         case 'get_weekly_summary':
           result = await anton.getWeeklySummary({
             childName: args['childName'] as string,
             weekStartAt: args['weekStartAt'] as string | undefined,
+            groupName: group,
           });
           break;
         case 'get_subject_summary':
@@ -584,7 +636,7 @@ export async function startMcpServer(anton: Anton): Promise<void> {
           });
           break;
         case 'compare_children':
-          result = await anton.compareChildren();
+          result = await anton.compareChildren({ groupName: group });
           break;
         case 'list_assignments':
           result = anton.listAssignments({

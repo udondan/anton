@@ -64,6 +64,13 @@ export interface AntonConfig {
   loginCode?: string;
   /** Internal log ID — alternative to loginCode */
   logId?: string;
+  /**
+   * Default group name to use when the parent belongs to multiple groups.
+   * Matched case-insensitively against groupName. Falls back to the first group
+   * discovered if not set. Can also be set via the ANTON_GROUP environment
+   * variable (CLI / MCP layer reads it and passes it here).
+   */
+  groupName?: string;
 }
 
 interface ResolvedChild {
@@ -79,14 +86,14 @@ interface ResolvedChild {
 export class Anton {
   private readonly config: AntonConfig;
   private parentSession: Session | null = null;
-  private groupInfo: GroupInfo | null = null;
+  private allGroups: GroupInfo[] = [];
 
   constructor(config: AntonConfig) {
     this.config = config;
   }
 
   /**
-   * Authenticate with the parent account and load the family group.
+   * Authenticate with the parent account and load all family groups.
    * Must be called before using any other method.
    * Safe to call multiple times — subsequent calls are no-ops if already connected.
    */
@@ -101,7 +108,7 @@ export class Anton {
       return;
     }
 
-    // Resolve family group
+    // Resolve all family groups
     try {
       // The API can exhibit eventual consistency: right after login the user-events
       // log may be temporarily empty.  Retry up to 3 times with back-off.
@@ -114,28 +121,7 @@ export class Anton {
         if (groupCodes.length > 0) break;
       }
       if (groupCodes.length > 0) {
-        const groupCode = groupCodes[0]!;
-        const groupEvents = await getGroupEvents(groupCode);
-        this.groupInfo = parseGroupInfo(groupCode, groupEvents);
-
-        // Enrich members with display names and logIds
-        try {
-          const descriptions = await getGroupMemberDescriptions(
-            groupCode,
-            this.parentSession.logId,
-            this.parentSession.authToken,
-          );
-          const byPublicId = new Map(descriptions.map((d) => [d.publicId, d]));
-          for (const member of this.groupInfo.members) {
-            const desc = byPublicId.get(member.publicId);
-            if (desc) {
-              member.displayName = desc.displayName;
-              member.logId = desc.logId;
-            }
-          }
-        } catch {
-          // non-fatal — members will still have publicIds
-        }
+        this.allGroups = await this.fetchAllGroups(groupCodes, this.parentSession);
       }
     } catch (err) {
       throw new Error(`Failed to load family group: ${(err as Error).message}`);
@@ -145,50 +131,34 @@ export class Anton {
   /**
    * Fast-path connect using a cached parent session.
    *
-   * groupCode must always be supplied (read from the stale or fresh cache entry).
+   * groupCodes must always be supplied (read from the stale or fresh cache entry).
    *
-   * When groupInfo is provided (TTL still valid): zero API calls — both the
+   * When groups is provided (TTL still valid): zero API calls — both the
    * parent session and group membership are restored directly from cache.
    *
-   * When groupInfo is omitted (TTL expired): uses the known groupCode to
-   * re-fetch group events and member descriptions (2 API calls, no loginWithCode
-   * or getUserEvents).  Throws on failure so the caller can fall back to a full
-   * connect() and clear the session cache.
+   * When groups is omitted (TTL expired): uses the known groupCodes to
+   * re-fetch group events and member descriptions, skipping loginWithCode
+   * and getUserEvents.  Throws on failure so the caller can fall back to a
+   * full connect() and clear the session cache.
    *
    * @internal Used by the CLI session cache. Not part of the public SDK API.
    */
-  async connectFromCache(session: Session, groupCode: string, groupInfo?: GroupInfo): Promise<void> {
+  async connectFromCache(
+    session: Session,
+    groupCodes: string[],
+    groups?: GroupInfo[],
+  ): Promise<void> {
     if (this.parentSession) return;
     this.parentSession = session;
 
-    if (groupInfo) {
+    if (groups) {
       // Zero API calls — restore group membership from cache.
-      this.groupInfo = groupInfo;
+      this.allGroups = groups;
       return;
     }
 
-    // Group info TTL expired — re-fetch using the known groupCode.
-    // groupCode is always available from the stale cache entry, so we skip
-    // getUserEvents entirely and go straight to the group logger.
-    const groupEvents = await getGroupEvents(groupCode);
-    this.groupInfo = parseGroupInfo(groupCode, groupEvents);
-    try {
-      const descriptions = await getGroupMemberDescriptions(
-        groupCode,
-        session.logId,
-        session.authToken,
-      );
-      const byPublicId = new Map(descriptions.map((d) => [d.publicId, d]));
-      for (const member of this.groupInfo.members) {
-        const desc = byPublicId.get(member.publicId);
-        if (desc) {
-          member.displayName = desc.displayName;
-          member.logId = desc.logId;
-        }
-      }
-    } catch {
-      // non-fatal — members will still have publicIds
-    }
+    // Group info TTL expired — re-fetch using the known groupCodes.
+    this.allGroups = await this.fetchAllGroups(groupCodes, session);
   }
 
   /**
@@ -197,14 +167,41 @@ export class Anton {
    *
    * @internal Used by the CLI session cache. Not part of the public SDK API.
    */
-  getCacheData(): { session: Session; groupInfo: GroupInfo } | null {
-    if (!this.parentSession || !this.groupInfo) return null;
-    return { session: this.parentSession, groupInfo: this.groupInfo };
+  getCacheData(): { session: Session; groups: GroupInfo[] } | null {
+    if (!this.parentSession || this.allGroups.length === 0) return null;
+    return { session: this.parentSession, groups: this.allGroups };
   }
 
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
+
+  private async fetchAllGroups(groupCodes: string[], session: Session): Promise<GroupInfo[]> {
+    return Promise.all(
+      groupCodes.map(async (code) => {
+        const events = await getGroupEvents(code);
+        const info = parseGroupInfo(code, events);
+        try {
+          const descriptions = await getGroupMemberDescriptions(
+            code,
+            session.logId,
+            session.authToken,
+          );
+          const byPublicId = new Map(descriptions.map((d) => [d.publicId, d]));
+          for (const member of info.members) {
+            const desc = byPublicId.get(member.publicId);
+            if (desc) {
+              member.displayName = desc.displayName;
+              member.logId = desc.logId;
+            }
+          }
+        } catch {
+          // non-fatal — members will still have publicIds
+        }
+        return info;
+      }),
+    );
+  }
 
   private requireParent(): Session {
     if (!this.parentSession) {
@@ -213,23 +210,52 @@ export class Anton {
     return this.parentSession;
   }
 
-  private requireGroup(): GroupInfo {
-    if (!this.groupInfo) {
+  /**
+   * Return the GroupInfo to operate on.
+   * Priority: explicit groupName arg > config.groupName > first group.
+   */
+  private requireGroup(groupName?: string): GroupInfo {
+    if (this.allGroups.length === 0) {
       throw new Error('Family group not loaded. Call connect() first.');
     }
-    return this.groupInfo;
+    const name = groupName ?? this.config.groupName;
+    if (name) {
+      const found = this.allGroups.find(
+        (g) => g.groupName.toLowerCase() === name.toLowerCase(),
+      );
+      if (!found) {
+        throw new Error(
+          `Group "${name}" not found. Available groups: ${this.allGroups.map((g) => g.groupName).join(', ')}`,
+        );
+      }
+      return found;
+    }
+    return this.allGroups[0]!;
   }
 
+  private getDefaultGroup(): GroupInfo | null {
+    if (this.allGroups.length === 0) return null;
+    const name = this.config.groupName;
+    if (name) {
+      return (
+        this.allGroups.find((g) => g.groupName.toLowerCase() === name.toLowerCase()) ??
+        this.allGroups[0]!
+      );
+    }
+    return this.allGroups[0]!;
+  }
+
+  /** Search all groups for a child by display name. */
   private resolveChild(name: string): ResolvedChild {
-    if (this.groupInfo) {
-      const m = this.groupInfo.members.find(
+    for (const group of this.allGroups) {
+      const m = group.members.find(
         (mem) => mem.displayName?.toLowerCase() === name.toLowerCase(),
       );
       if (m?.logId) {
         return { logId: m.logId, publicId: m.publicId, displayName: m.displayName ?? name };
       }
     }
-    throw new Error(`Child "${name}" not found. Use getGroup() to see member names.`);
+    throw new Error(`Child "${name}" not found in any group. Use listGroups() to see member names.`);
   }
 
   private currentWeekMonday(): string {
@@ -245,7 +271,8 @@ export class Anton {
   // ---------------------------------------------------------------------------
 
   /** Return current auth and group status (synchronous — no network call). */
-  getStatus() {
+  getStatus(opts?: { groupName?: string }) {
+    const defaultGroup = opts?.groupName ? this.requireGroup(opts.groupName) : this.getDefaultGroup();
     return {
       parent: this.parentSession
         ? {
@@ -254,18 +281,19 @@ export class Anton {
             loginCode: this.parentSession.loginCode,
           }
         : null,
-      group: this.groupInfo
+      group: defaultGroup
         ? {
-            groupCode: this.groupInfo.groupCode,
-            groupName: this.groupInfo.groupName,
-            groupType: this.groupInfo.groupType,
-            memberCount: this.groupInfo.members.length,
-            isPlus: this.groupInfo.isPlus,
-            plusValidUntil: this.groupInfo.plusValidUntil,
+            groupCode: defaultGroup.groupCode,
+            groupName: defaultGroup.groupName,
+            groupType: defaultGroup.groupType,
+            memberCount: defaultGroup.members.length,
+            isPlus: defaultGroup.isPlus,
+            plusValidUntil: defaultGroup.plusValidUntil,
           }
         : null,
+      totalGroups: this.allGroups.length,
       children:
-        this.groupInfo?.members
+        defaultGroup?.members
           .filter((m) => m.role === 'pupil')
           .map((m) => ({
             displayName: m.displayName,
@@ -276,12 +304,29 @@ export class Anton {
   }
 
   // ---------------------------------------------------------------------------
-  // Group
+  // Groups
   // ---------------------------------------------------------------------------
 
+  /** List all groups the parent account belongs to, with their members. */
+  listGroups() {
+    return this.allGroups.map((g) => ({
+      groupCode: g.groupCode,
+      groupName: g.groupName,
+      groupType: g.groupType,
+      isPlus: g.isPlus,
+      plusValidUntil: g.plusValidUntil,
+      members: g.members.map((m) => ({
+        publicId: m.publicId,
+        role: m.role,
+        displayName: m.displayName,
+        logId: m.logId,
+      })),
+    }));
+  }
+
   /** Fetch fresh group info + currently pinned blocks. */
-  async getGroup() {
-    const group = this.requireGroup();
+  async getGroup(opts?: { groupName?: string }) {
+    const group = this.requireGroup(opts?.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
     const pinnedBlocks = parsePinnedBlocks(groupEvents);
     const freshGroup = parseGroupInfo(group.groupCode, groupEvents);
@@ -289,8 +334,12 @@ export class Anton {
   }
 
   /** List all pinned blocks (assignments) in the group, with optional filters. */
-  async getGroupAssignments(opts?: { childPublicId?: string; week?: string }) {
-    const group = this.requireGroup();
+  async getGroupAssignments(opts?: {
+    childPublicId?: string;
+    week?: string;
+    groupName?: string;
+  }) {
+    const group = this.requireGroup(opts?.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
     let blocks = parsePinnedBlocks(groupEvents);
     if (opts?.childPublicId) {
@@ -321,9 +370,10 @@ export class Anton {
     weekStartAt?: string;
     childName?: string;
     childPublicId?: string;
+    groupName?: string;
   }) {
     const parent = this.requireParent();
-    const group = this.requireGroup();
+    const group = this.requireGroup(opts.groupName);
 
     let childPublicId = opts.childPublicId;
     if (opts.childName) {
@@ -411,9 +461,10 @@ export class Anton {
     blockPuid: string;
     weekStartAt: string;
     childPublicId?: string;
+    groupName?: string;
   }) {
     const parent = this.requireParent();
-    const group = this.requireGroup();
+    const group = this.requireGroup(opts.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
     const pins = parsePinnedBlocks(groupEvents);
     const match = pins.find(
@@ -434,8 +485,8 @@ export class Anton {
   // ---------------------------------------------------------------------------
 
   /** List all pupil members of the family group. */
-  listChildren() {
-    const group = this.requireGroup();
+  listChildren(opts?: { groupName?: string }) {
+    const group = this.requireGroup(opts?.groupName);
     return group.members
       .filter((m) => m.role === 'pupil')
       .map((m) => ({ displayName: m.displayName, publicId: m.publicId, logId: m.logId }));
@@ -623,9 +674,13 @@ export class Anton {
   // ---------------------------------------------------------------------------
 
   /** Check which assigned blocks a child has completed. */
-  async checkAssignmentCompletion(opts: { childName: string; week?: string }) {
+  async checkAssignmentCompletion(opts: {
+    childName: string;
+    week?: string;
+    groupName?: string;
+  }) {
     const child = this.resolveChild(opts.childName);
-    const group = this.requireGroup();
+    const group = this.requireGroup(opts.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
     const pinnedBlocks = parsePinnedBlocks(groupEvents);
 
@@ -652,11 +707,15 @@ export class Anton {
   }
 
   /** Weekly rollup of a child's activity. */
-  async getWeeklySummary(opts: { childName: string; weekStartAt?: string }) {
+  async getWeeklySummary(opts: {
+    childName: string;
+    weekStartAt?: string;
+    groupName?: string;
+  }) {
     const child = this.resolveChild(opts.childName);
     const weekStartAt = opts.weekStartAt ?? this.currentWeekMonday();
 
-    const group = this.requireGroup();
+    const group = this.requireGroup(opts.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
     const pinnedBlocks = parsePinnedBlocks(groupEvents).filter(
       (b) => b.weekStartAt === weekStartAt && (b.subgroup == null || b.subgroup === child.publicId),
@@ -686,9 +745,9 @@ export class Anton {
     return getActivityTimeline(child.displayName, finishEvents, since);
   }
 
-  /** Side-by-side comparison of all children in the family group. */
-  async compareChildren() {
-    const group = this.requireGroup();
+  /** Side-by-side comparison of all children in a group. */
+  async compareChildren(opts?: { groupName?: string }) {
+    const group = this.requireGroup(opts?.groupName);
     const pupils = group.members.filter((m) => m.role === 'pupil' && m.logId);
     const rows = await Promise.all(
       pupils.map(async (m) => {

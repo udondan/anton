@@ -76,9 +76,9 @@ async function callTool(name: string, args: Record<string, unknown> = {}): Promi
 // ---------------------------------------------------------------------------
 
 describe('MCP tools/list', () => {
-  it('returns exactly 23 tools', async () => {
+  it('returns exactly 24 tools', async () => {
     const response = await client.listTools();
-    expect(response.tools).toHaveLength(23);
+    expect(response.tools).toHaveLength(24);
   });
 
   it('every tool has a name, description, and inputSchema', async () => {
@@ -94,7 +94,7 @@ describe('MCP tools/list', () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
     const expected = [
-      'get_status', 'get_group', 'get_group_assignments', 'pin_block', 'unpin_block',
+      'get_status', 'list_groups', 'get_group', 'get_group_assignments', 'pin_block', 'unpin_block',
       'get_progress', 'get_events', 'get_level_progress', 'list_children',
       'list_plans', 'list_topics', 'get_topic_blocks', 'get_plan', 'get_lesson',
       'check_assignment_completion', 'get_weekly_summary', 'get_subject_summary',
@@ -112,16 +112,37 @@ describe('MCP tools/list', () => {
 // ---------------------------------------------------------------------------
 
 describe('MCP tools/call get_status', () => {
-  it('returns parent, group, and children', async () => {
+  it('returns parent, group, totalGroups, and children', async () => {
     const result = await callTool('get_status') as {
       parent: { logId: string; displayName: string };
       group: { groupCode: string };
+      totalGroups: number;
       children: unknown[];
     };
     expect(result.parent.logId).toBeTruthy();
     expect(result.parent.displayName).toBeTruthy();
     expect(result.group.groupCode).toBeTruthy();
+    expect(typeof result.totalGroups).toBe('number');
+    expect(result.totalGroups).toBeGreaterThan(0);
     expect(Array.isArray(result.children)).toBe(true);
+  });
+});
+
+describe('MCP tools/call list_groups', () => {
+  it('returns at least one group with members', async () => {
+    const groups = await callTool('list_groups') as Array<{
+      groupCode: string;
+      groupName: string;
+      members: Array<{ publicId: string; role: string }>;
+    }>;
+    expect(Array.isArray(groups)).toBe(true);
+    expect(groups.length).toBeGreaterThan(0);
+    expect(groups[0]!.groupCode).toBeTruthy();
+    expect(groups[0]!.groupName).toBeTruthy();
+    expect(Array.isArray(groups[0]!.members)).toBe(true);
+    expect(groups[0]!.members.length).toBeGreaterThan(0);
+    expect(groups[0]!.members[0]!.publicId).toBeTruthy();
+    expect(groups[0]!.members[0]!.role).toBeTruthy();
   });
 });
 
@@ -399,6 +420,41 @@ describe('MCP tools/call local assignments CRUD', () => {
     expect(after.some((a) => a.id === created.id)).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// tools/call group parameter
+// ---------------------------------------------------------------------------
+
+describe('MCP tools/call group parameter', () => {
+  it('get_group with valid group name returns same groupCode as default', async () => {
+    const groups = await callTool('list_groups') as Array<{ groupName: string; groupCode: string }>;
+    const groupName = groups[0]!.groupName;
+
+    const [named, unnamed] = await Promise.all([
+      callTool('get_group', { group: groupName }),
+      callTool('get_group'),
+    ]) as [{ groupCode: string }, { groupCode: string }];
+    expect(named.groupCode).toBe(unnamed.groupCode);
+  });
+
+  it('get_group with invalid group name returns isError=true', async () => {
+    const response = await client.callTool({ name: 'get_group', arguments: { group: 'NoSuchGroupXYZ' } });
+    expect(response.isError).toBe(true);
+    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toMatch(/not found/i);
+  });
+
+  it('list_children with valid group name returns same count as default', async () => {
+    const groups = await callTool('list_groups') as Array<{ groupName: string }>;
+    const groupName = groups[0]!.groupName;
+
+    const [named, unnamed] = await Promise.all([
+      callTool('list_children', { group: groupName }),
+      callTool('list_children'),
+    ]) as [unknown[], unknown[]];
+    expect(named.length).toBe(unnamed.length);
+  });
+}, 30_000);
 
 // ---------------------------------------------------------------------------
 // tools/call pin_block / unpin_block
