@@ -18,7 +18,7 @@
  * Anton.connectFromCache().
  */
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -118,6 +118,7 @@ export function writeCache(
       groupInfoCachedAt: Date.now(),
     };
     writeFileSync(path, JSON.stringify(entry, null, 2), { mode: 0o600 });
+    chmodSync(path, 0o600); // enforce on existing files regardless of prior permissions
   } catch (err) {
     console.warn(`[anton] Failed to write session cache: ${(err as Error).message}`);
   }

@@ -490,7 +490,7 @@ describe('CLI blocks', () => {
     expect(result.project).toBe('c-mat-4');
     expect(result.blocks.length).toBeGreaterThan(0);
     expect(result.blocks[0]!.puid).toBeTruthy();
-    expect(result.blocks[0]!.blockPath).toMatch(/^\/..\//);
+    expect(result.blocks[0]!.blockPath).toMatch(/^\/\.\.\//);
   });
 }, 30_000);
 
