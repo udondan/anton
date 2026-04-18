@@ -109,12 +109,12 @@ export function checkAssignmentCompletion(
     let blockTitle = block.puid;
     let levels: { puid: string; title: string }[] = [];
 
-    for (const topic of plan.topics) {
+    topicSearch: for (const topic of plan.topics) {
       for (const b of topic.blocks) {
         if (b.puid === block.puid) {
           blockTitle = b.title;
           levels = b.levels.map((lv) => ({ puid: lv.puid, title: lv.title }));
-          break;
+          break topicSearch;
         }
       }
     }
@@ -201,7 +201,7 @@ export function getWeeklySummary(
     totalCorrects += evt.corrects;
     totalQuestions += evt.total;
     starsEarned += evt.score;
-    starsMax += evt.total;
+    starsMax += 3; // max 3 stars per level in Anton
     totalDurationSeconds += evt.duration;
     subjects.add(evt.puid.split('/')[0]);
     if (assignedBlockPuids.has(evt.blockPuid)) {

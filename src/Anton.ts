@@ -198,10 +198,8 @@ export class Anton {
               member.logId = desc.logId;
             }
           }
-        } catch (err) {
-          console.warn(
-            `[anton] Could not fetch member descriptions for group ${code}: ${(err as Error).message}`,
-          );
+        } catch {
+          // Non-fatal: members will have no displayName/logId
         }
         return info;
       }),

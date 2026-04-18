@@ -41,7 +41,7 @@ const TOOLS: Tool[] = [
     name: 'get_status',
     description:
       'Show authentication and family group status. ' +
-      'Returns parent account info, active group info, total group count, and any configured child accounts.',
+      'Returns parent account info, active group info, total group count, and pupils in the active group.',
     inputSchema: {
       type: 'object',
       properties: { ...groupParam },
@@ -182,7 +182,7 @@ const TOOLS: Tool[] = [
   {
     name: 'get_progress',
     description:
-      'Get a learning progress summary for a configured child (one with a login code). ' +
+      'Get a learning progress summary for a child in the selected group. ' +
       'Returns completed levels with scores, stars by subject, and event counts. ' +
       'Use list_children to see available child names.',
     inputSchema: {
@@ -204,7 +204,7 @@ const TOOLS: Tool[] = [
   {
     name: 'get_events',
     description:
-      'Fetch raw event log for a configured child. ' +
+      'Fetch raw event log for a child in the selected group. ' +
       'Events include: finishLevel, startLevel, setCurrentBlock, adjustCoins, etc.',
     inputSchema: {
       type: 'object',
@@ -453,7 +453,7 @@ const TOOLS: Tool[] = [
   {
     name: 'compare_children',
     description:
-      'Side-by-side comparison of all configured children: ' +
+      'Side-by-side comparison of all children in the selected group: ' +
       'total stars, accuracy, time spent, active days, levels completed, and subjects covered.',
     inputSchema: {
       type: 'object',

@@ -7,10 +7,10 @@
  * ~/.config/anton/assignments.json.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { homedir } from 'os';
-import { dirname, join } from 'path';
-import { randomUUID } from 'crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { Assignment, AssignmentStatus, AssignmentStore } from './types.js';
 
 // ---------------------------------------------------------------------------
