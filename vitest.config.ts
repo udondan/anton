@@ -25,9 +25,7 @@ export default defineConfig({
     hookTimeout: 60_000,
     // Run files one at a time; TestSequencer controls the order (CLI last).
     pool: 'forks',
-    poolOptions: {
-      forks: { maxForks: 1 },
-    },
+    maxForks: 1,
     sequence: {
       sequencer: TestSequencer,
     },

@@ -190,6 +190,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'ISO date to fetch events from (default: all time)',
         },
+        ...groupParam,
       },
       required: ['childName'],
     },
@@ -218,6 +219,7 @@ const TOOLS: Tool[] = [
           type: 'number',
           description: 'Max number of events to return (default: 100)',
         },
+        ...groupParam,
       },
       required: ['childName'],
     },
@@ -245,6 +247,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Child publicId. Alternative to childName when publicId is known.',
         },
+        ...groupParam,
       },
       required: ['levelPuid'],
     },
@@ -416,6 +419,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Filter by subject/project prefix, e.g. "mat", "natdeu". Partial match.',
         },
+        ...groupParam,
       },
       required: ['childName'],
     },
@@ -433,6 +437,7 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Start date (YYYY-MM-DD). Defaults to all time.',
         },
+        ...groupParam,
       },
       required: ['childName'],
     },
@@ -566,6 +571,7 @@ export async function startMcpServer(anton: Anton): Promise<void> {
           result = await anton.getProgress({
             childName: args['childName'] as string,
             since: args['since'] as string | undefined,
+            groupName: group,
           });
           break;
         case 'get_events':
@@ -574,6 +580,7 @@ export async function startMcpServer(anton: Anton): Promise<void> {
             since: args['since'] as string | undefined,
             eventType: args['eventType'] as string | undefined,
             limit: args['limit'] as number | undefined,
+            groupName: group,
           });
           break;
         case 'get_level_progress':
@@ -581,6 +588,7 @@ export async function startMcpServer(anton: Anton): Promise<void> {
             levelPuid: args['levelPuid'] as string,
             childName: args['childName'] as string | undefined,
             childPublicId: args['childPublicId'] as string | undefined,
+            groupName: group,
           });
           break;
         case 'list_children':
@@ -627,12 +635,14 @@ export async function startMcpServer(anton: Anton): Promise<void> {
           result = await anton.getSubjectSummary({
             childName: args['childName'] as string,
             subject: args['subject'] as string | undefined,
+            groupName: group,
           });
           break;
         case 'get_activity_timeline':
           result = await anton.getActivityTimeline({
             childName: args['childName'] as string,
             since: args['since'] as string | undefined,
+            groupName: group,
           });
           break;
         case 'compare_children':

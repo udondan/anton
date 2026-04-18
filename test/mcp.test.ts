@@ -587,6 +587,16 @@ describe('MCP family group (groupType === "family")', () => {
     expect(withLogId!.logId).toBeTruthy();
   });
 
+  it('get_progress with family group returns logId and totalEvents > 0', async () => {
+    if (!familyGroupName || !familyChildName) return;
+    const result = await callTool('get_progress', {
+      childName: familyChildName,
+      group: familyGroupName,
+    }) as { logId: string; totalEvents: number };
+    expect(result.logId).toBeTruthy();
+    expect(result.totalEvents).toBeGreaterThan(0);
+  }, 30_000);
+
   it('compare_children with family group returns real data', async () => {
     if (!familyGroupName || !familyChildName) return;
     const result = await callTool('compare_children', { group: familyGroupName }) as {

@@ -514,9 +514,9 @@ export class Anton {
   // ---------------------------------------------------------------------------
 
   /** Summarise completed levels and stars for a child. */
-  async getProgress(opts: { childName: string; since?: string }) {
+  async getProgress(opts: { childName: string; since?: string; groupName?: string }) {
     const since = opts.since ?? '1970-01-01';
-    const child = this.resolveChild(opts.childName);
+    const child = this.resolveChild(opts.childName, opts.groupName);
     const parent = this.requireParent();
     let events: AntonEvent[];
     if (child.logId) {
@@ -534,10 +534,11 @@ export class Anton {
     since?: string;
     eventType?: string;
     limit?: number;
+    groupName?: string;
   }) {
     const since = opts.since ?? '1970-01-01';
     const limit = opts.limit ?? 100;
-    const child = this.resolveChild(opts.childName);
+    const child = this.resolveChild(opts.childName, opts.groupName);
     const parent = this.requireParent();
     let events: AntonEvent[];
     if (child.logId) {
@@ -555,11 +556,12 @@ export class Anton {
     levelPuid: string;
     childName?: string;
     childPublicId?: string;
+    groupName?: string;
   }) {
     const parent = this.requireParent();
     let childPublicId = opts.childPublicId;
     if (opts.childName) {
-      childPublicId = this.resolveChild(opts.childName).publicId;
+      childPublicId = this.resolveChild(opts.childName, opts.groupName).publicId;
     }
     if (!childPublicId) throw new Error('Provide childName or childPublicId');
     return getLevelReviewReport(opts.levelPuid, childPublicId, parent.logId, parent.authToken);
@@ -755,16 +757,16 @@ export class Anton {
   }
 
   /** Per-subject accuracy, stars, time, and trend. */
-  async getSubjectSummary(opts: { childName: string; subject?: string }) {
-    const child = this.resolveChild(opts.childName);
+  async getSubjectSummary(opts: { childName: string; subject?: string; groupName?: string }) {
+    const child = this.resolveChild(opts.childName, opts.groupName);
     const finishEvents = await this.getChildEvents(child);
     return getSubjectSummary(child.displayName, finishEvents, opts.subject);
   }
 
   /** Active days, streaks, gaps, and daily breakdown. */
-  async getActivityTimeline(opts: { childName: string; since?: string }) {
+  async getActivityTimeline(opts: { childName: string; since?: string; groupName?: string }) {
     const since = opts.since ?? '1970-01-01';
-    const child = this.resolveChild(opts.childName);
+    const child = this.resolveChild(opts.childName, opts.groupName);
     const finishEvents = await this.getChildEvents(child, since);
     return getActivityTimeline(child.displayName, finishEvents, since);
   }
