@@ -21,3 +21,15 @@ run = "bun run test"
 [tasks."test:watch"]
 description = "Run tests in watch mode"
 run = "bun run test:watch"
+
+[tasks.lint]
+description = "Lint src/ and test/"
+run = "bun run lint"
+
+[tasks."lint:fix"]
+description = "Lint and auto-fix src/ and test/"
+run = "bun run lint:fix"
+
+[tasks.format]
+description = "Format src/ and test/ with Prettier"
+run = "bun run format"
