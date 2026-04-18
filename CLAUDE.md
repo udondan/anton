@@ -41,7 +41,7 @@ export ANTON_LOG_ID='L-...'
 
 # Optional: default group name when parent belongs to multiple groups
 # Matched case-insensitively against groupName. Falls back to the first group.
-export ANTON_GROUP='Schroeder'
+export ANTON_GROUP='MyFamily'
 
 # Optional: custom assignments file (default: ~/.config/anton/assignments.json)
 export ANTON_ASSIGNMENTS_FILE='/path/to/assignments.json'
