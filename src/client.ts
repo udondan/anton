@@ -27,6 +27,8 @@ import type {
 /** Device log ID from the browser's localStorage */
 const DEVICE_LOG_ID = 'D-YT8Q-uusgorxroQWveIBP2afCCXK3pYR';
 
+const REQUEST_TIMEOUT_MS = 30_000;
+
 /** Headers that mimic the official Chrome-based web client */
 const BASE_HEADERS: Record<string, string> = {
   'Content-Type': 'application/json',
@@ -62,7 +64,7 @@ async function defReq<T>(
     ...(logId != null ? { logId } : {}),
   };
 
-  const cfg: AxiosRequestConfig = { headers: BASE_HEADERS };
+  const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
   const response = await axios.post<T>(url, body, cfg);
   assertOk(response.data);
   return response.data;
@@ -92,7 +94,7 @@ async function pllsCall<T>(
     authToken,
   };
 
-  const cfg: AxiosRequestConfig = { headers: BASE_HEADERS };
+  const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
   const response = await axios.post<T>(url, body, cfg);
   assertOk(response.data);
   return response.data;
@@ -164,6 +166,7 @@ export async function getEvents(
         deviceLogId: DEVICE_LOG_ID,
       },
       headers: BASE_HEADERS,
+      timeout: REQUEST_TIMEOUT_MS,
     },
   );
   return response.data.events ?? [];
@@ -328,7 +331,7 @@ export function pinGroupBlock(
       authToken,
     };
     try {
-      const cfg: AxiosRequestConfig = { headers: BASE_HEADERS };
+      const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
       const response = await axios.post<{ status?: string }>(
         `https://${r}-apis-db.anton.app/?p=group/pinContentNext/create/query`,
         body,
@@ -368,7 +371,7 @@ export async function unpinGroupBlock(
     authToken,
   };
   try {
-    const cfg: AxiosRequestConfig = { headers: BASE_HEADERS };
+    const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
     const response = await axios.post<{ status?: string }>(
       `https://${r}-apis-db.anton.app/?p=group/pinContentNext/delete/query`,
       body,
@@ -398,6 +401,7 @@ export async function getPlansCatalogue(): Promise<PlanSummary[]> {
   const response = await axios.get<{ plans: PlanSummary[] }>('https://content.anton.app/files/', {
     params: { fileId: 'list/plans', etag: 'latest' },
     headers: { Accept: 'application/json', Origin: 'https://anton.app' },
+    timeout: REQUEST_TIMEOUT_MS,
   });
   return response.data.plans;
 }
@@ -412,6 +416,7 @@ export async function getPlan(project: string, etag = '0'): Promise<Plan> {
   const response = await axios.get<Plan>('https://content.anton.app/files/', {
     params: { fileId: `plan/${project}`, etag },
     headers: { Accept: 'application/json', Origin: 'https://anton.app' },
+    timeout: REQUEST_TIMEOUT_MS,
   });
   return response.data;
 }
@@ -430,6 +435,7 @@ export async function getLessonContent(fileId: string, etag = '0'): Promise<Less
   const response = await axios.get<LessonContent>('https://content.anton.app/files/', {
     params: { fileId: normalised, etag },
     headers: { Accept: 'application/json', Origin: 'https://anton.app' },
+    timeout: REQUEST_TIMEOUT_MS,
   });
   return response.data;
 }

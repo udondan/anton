@@ -12,7 +12,7 @@
  * const anton = new Anton({ loginCode: 'YOUR-CODE' });
  * await anton.connect();
  *
- * const status = await anton.getStatus();
+ * const status = anton.getStatus();
  * console.log(status);
  * ```
  */

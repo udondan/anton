@@ -263,7 +263,9 @@ const TOOLS: Tool[] = [
   // ── Lesson catalogue ─────────────────────────────────────────────────────
   {
     name: 'list_children',
-    description: 'List configured children (those with login codes) and their session info.',
+    description:
+      'List pupil members of the selected group and any available child session info. ' +
+      'Results may include children without login codes.',
     inputSchema: {
       type: 'object',
       properties: { ...groupParam },

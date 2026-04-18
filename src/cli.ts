@@ -39,6 +39,12 @@
 import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { Anton } from './Anton.js';
+import {
+  createAssignment,
+  deleteAssignment,
+  listAssignments,
+  updateAssignment,
+} from './assignments.js';
 import { startMcpServer } from './mcp.js';
 import {
   clearCache,
@@ -79,8 +85,9 @@ function loadAnton(): Anton {
  *   - the global --no-cache flag is passed, or
  *   - ANTON_NO_SESSION_CACHE=1 is set in the environment.
  *
- * On a cache hit the login + getUserEvents round-trips are skipped; fresh
- * group events and member descriptions are still fetched from the API.
+ * On a cache hit the login + getUserEvents round-trips are skipped. Cached
+ * group data is reused while within its TTL; once stale, it is re-fetched
+ * from the API without re-logging in.
  * If the cached token turns out to be stale, the cache is cleared and a
  * full login is performed transparently.
  */
@@ -451,9 +458,8 @@ program
   .option('--child <name>', 'Filter by child name')
   .option('--status <status>', 'Filter by status: pending, completed, cancelled')
   .action((opts: { child?: string; status?: string }) => {
-    const anton = loadAnton();
     print(
-      anton.listAssignments({
+      listAssignments({
         childName: opts.child,
         status: opts.status as 'pending' | 'completed' | 'cancelled' | undefined,
       }),
@@ -468,9 +474,8 @@ program
   .option('--title <title>', 'Human-readable lesson title')
   .option('--note <note>', 'Optional note')
   .action((child: string, fileId: string, opts: { title?: string; note?: string }) => {
-    const anton = loadAnton();
     print(
-      anton.assignLesson({
+      createAssignment({
         childName: child,
         fileId,
         lessonTitle: opts.title,
@@ -487,9 +492,8 @@ program
   .option('--status <status>', 'New status: pending, completed, cancelled')
   .option('--note <note>', 'Updated note')
   .action((id: string, opts: { status?: string; note?: string }) => {
-    const anton = loadAnton();
     print(
-      anton.updateAssignment(id, {
+      updateAssignment(id, {
         status: opts.status as 'pending' | 'completed' | 'cancelled' | undefined,
         note: opts.note,
       }),
@@ -502,8 +506,7 @@ program
   .command('delete-assignment <id>')
   .description('Delete a local assignment')
   .action((id: string) => {
-    const anton = loadAnton();
-    anton.deleteAssignment(id);
+    deleteAssignment(id);
     print({ deleted: true, id });
   });
 

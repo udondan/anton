@@ -75,8 +75,12 @@ export function checkAssignmentCompletion(
     }
   }
 
-  // Filter pinned blocks to this child
-  let blocks = pinnedBlocks.filter((b) => b.subgroup == null || b.subgroup === filterPublicId);
+  // When a filter is given, restrict to group-wide pins and this child's pins.
+  // Without a filter, include all pinned blocks (group-wide and per-child).
+  let blocks =
+    filterPublicId === undefined
+      ? pinnedBlocks
+      : pinnedBlocks.filter((b) => b.subgroup == null || b.subgroup === filterPublicId);
   if (filterWeek) {
     blocks = blocks.filter((b) => b.weekStartAt === filterWeek);
   }
