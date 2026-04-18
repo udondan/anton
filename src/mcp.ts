@@ -523,7 +523,7 @@ type Args = Record<string, unknown>;
 
 export async function startMcpServer(anton: Anton): Promise<void> {
   const server = new Server(
-    { name: 'anton', version: '0.1.0' },
+    { name: 'anton', version: '1.0.0' },
     { capabilities: { tools: {} } },
   );
 
@@ -538,7 +538,7 @@ export async function startMcpServer(anton: Anton): Promise<void> {
 
       switch (name) {
         case 'get_status':
-          result = anton.getStatus();
+          result = anton.getStatus({ groupName: group });
           break;
         case 'list_groups':
           result = anton.listGroups();

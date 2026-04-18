@@ -23,9 +23,9 @@ const CHILD_NAME = 'Test';
 const TEMP_ASSIGNMENTS = join(tmpdir(), `anton-sdk-test-${process.pid}.json`);
 
 // Each test file uses a distinct far-future week so concurrent runs never
-// collide on the same pin (sdk=2099-03, mcp=2099-06, integration=2099-01).
+// collide on the same pin (sdk=2099-03/2099-10/2099-12, mcp=2099-06, cli=2099-09, integration=2099-01).
 const FAR_FUTURE_WEEK = '2099-03-01';
-const FAR_FUTURE_WEEK_TITLE = '2099-09-01'; // sdk title-based pin test
+const FAR_FUTURE_WEEK_TITLE = '2099-10-01'; // sdk title-based pin test
 const FAR_FUTURE_WEEK_GROUP = '2099-12-01'; // sdk group-wide (no child) pin test
 
 // ---------------------------------------------------------------------------

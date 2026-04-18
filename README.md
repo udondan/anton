@@ -281,7 +281,7 @@ anton --no-cache <befehl>   # Session-Cache überspringen, immer neu anmelden
 
 ## MCP-Server
 
-Der MCP-Server stellt alle 23 Tools über stdio bereit und ermöglicht KI-Assistenten wie Claude, den Lernfortschritt der Kinder zu analysieren und Lektionen automatisch zuzuweisen.
+Der MCP-Server stellt alle 24 Tools über stdio bereit und ermöglicht KI-Assistenten wie Claude, den Lernfortschritt der Kinder zu analysieren und Lektionen automatisch zuzuweisen.
 
 ### Einrichtung in Claude Code
 
@@ -394,6 +394,7 @@ Claude liest für jedes Kind den bisherigen Verlauf, prüft mit `check_assignmen
 | Tool                          | Beschreibung                                                |
 | ----------------------------- | ----------------------------------------------------------- |
 | `get_status`                  | Authentifizierungsstatus, Gruppeninfo, konfigurierte Kinder |
+| `list_groups`                 | Alle Gruppen, denen der Elternteil angehört                 |
 | `get_group`                   | Familienmitglieder + aktuell zugewiesene Blöcke             |
 | `get_group_assignments`       | Zugewiesene Blöcke, filterbar nach Kind/Woche               |
 | `pin_block`                   | Lektionsblock der Gruppe oder einem Kind zuweisen           |

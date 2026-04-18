@@ -4,7 +4,7 @@
  * Anton does not expose a public API for assigning lessons, so we keep a
  * simple JSON file on disk.  The file path can be configured via the
  * ANTON_ASSIGNMENTS_FILE environment variable; it defaults to
- * ~/.config/anton-mcp/assignments.json.
+ * ~/.config/anton/assignments.json.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -41,7 +41,7 @@ function load(): AssignmentStore {
 function save(store: AssignmentStore): void {
   const path = storePath();
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(store, null, 2), 'utf-8');
+  writeFileSync(path, JSON.stringify(store, null, 2), { encoding: 'utf-8', mode: 0o600 });
 }
 
 // ---------------------------------------------------------------------------

@@ -130,7 +130,7 @@ const program = new Command();
 program
   .name('anton')
   .description("CLI for the @udondan/anton SDK — monitor children's learning on anton.app")
-  .version('0.1.0')
+  .version('1.0.0')
   .option('--no-cache', 'Skip the session cache and always perform a fresh login')
   .option('--group <name>', 'Group name to operate on (overrides ANTON_GROUP env var)');
 

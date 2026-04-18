@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      ANTON_LOGIN_CODE: ${{ secrets.ANTON_LOGIN_CODE }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -23,7 +25,7 @@ jobs:
         run: bun run build
 
       - name: Test
+        if: env.ANTON_LOGIN_CODE != ''
         run: bun run test
         env:
-          ANTON_LOGIN_CODE: ${{ secrets.ANTON_LOGIN_CODE }}
           ANTON_GROUP: Test

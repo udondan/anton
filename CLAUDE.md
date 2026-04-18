@@ -58,7 +58,7 @@ src/
   analysis.ts     — Pure computation over event arrays (no HTTP, no Anton class)
   assignments.ts  — Local JSON store at ~/.config/anton/assignments.json
   session-cache.ts— CLI-only: session + group info cache at ~/.config/anton/session.json
-  mcp.ts          — MCP server wrapping Anton class as 23 tools over stdio
+  mcp.ts          — MCP server wrapping Anton class as 24 tools over stdio
   cli.ts          — commander-based CLI; delegates auth to connectAnton() which
                     reads/writes the session cache before calling Anton.connect()
   types.ts        — All exported TypeScript types
@@ -136,7 +136,7 @@ The two-layer cache: session is kept until an auth error; groups has a 10-minute
 { "event": "setGroupMember", "role": "pupil", "publicId": "P-P7R1oC6TfbGM7LzrEcKROb5SZTvb4PtI" }
 ```
 
-## MCP tools (23 total)
+## MCP tools (24 total)
 
 | Tool | Description |
 | ---- | ----------- |

@@ -84,7 +84,7 @@ describe('CLI meta', () => {
 // Placed early so it runs before the API rate limit builds up from the
 // many subsequent CLI process spawns.
 // Atomic test — pin then unpin so we never leave state behind.
-// Uses FAR_FUTURE_WEEK=2099-09 (sdk=2099-03, mcp=2099-06, integration=2099-01).
+// Uses FAR_FUTURE_WEEK=2099-09 (sdk=2099-03/2099-10/2099-12, mcp=2099-06, integration=2099-01).
 // ---------------------------------------------------------------------------
 
 const FAR_FUTURE_WEEK = '2099-09-01';
