@@ -413,12 +413,12 @@ describe('CLI timeline', () => {
 describe('CLI level-progress', () => {
   requireCredentials();
   it('returns level progress data for the Test child', async () => {
-    // Get a real block puid from the catalogue
     const { parsed: topicResult } = await run(['blocks', 'c-mat-4', '--topic-index', '0']);
-    const blocks = (topicResult as { blocks: { puid: string }[] }).blocks;
-    const levelPuid = blocks[0]!.puid;
+    const blocks = (topicResult as { blocks: { levels: { puid: string }[] }[] }).blocks;
+    const level = blocks.flatMap((b) => b.levels)[0];
+    expect(level).toBeDefined();
 
-    const { parsed } = await run(['level-progress', levelPuid, CHILD_NAME]);
+    const { parsed } = await run(['level-progress', level!.puid, CHILD_NAME]);
     expect(parsed).toBeDefined();
   });
 }, 60_000);

@@ -485,11 +485,11 @@ describe('Anton.getEvents', () => {
 
 describe('Anton.getLevelProgress', () => {
   it('returns level progress data for the Test child', async () => {
-    // Get a block puid from the catalogue to use as levelPuid
     const topicResult = await anton.getTopicBlocks({ project: 'c-mat-4', topicIndex: 0 });
-    const blockPuid = topicResult.blocks[0]!.puid;
+    const level = topicResult.blocks.flatMap((b) => b.levels)[0];
+    expect(level).toBeDefined();
 
-    const result = await anton.getLevelProgress({ levelPuid: blockPuid, childName: CHILD_NAME });
+    const result = await anton.getLevelProgress({ levelPuid: level!.puid, childName: CHILD_NAME });
     // The API returns an object or array — just verify it is defined and not an error
     expect(result).toBeDefined();
   }, 30_000);

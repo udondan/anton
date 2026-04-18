@@ -347,11 +347,12 @@ describe('MCP tools/call get_level_progress', () => {
       project: 'c-mat-4',
       topicIndex: 0,
     })) as {
-      blocks: { puid: string }[];
+      blocks: { puid: string; levels: { puid: string }[] }[];
     };
-    const blockPuid = topicResult.blocks[0]!.puid;
+    const level = topicResult.blocks.flatMap((b) => b.levels)[0];
+    expect(level).toBeDefined();
     const result = await callTool('get_level_progress', {
-      levelPuid: blockPuid,
+      levelPuid: level!.puid,
       childName: CHILD_NAME,
     });
     expect(result).toBeDefined();

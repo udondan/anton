@@ -127,6 +127,8 @@ export class Anton {
         this.allGroups = await this.fetchAllGroups(groupCodes, this.parentSession);
       }
     } catch (err) {
+      this.parentSession = null;
+      this.allGroups = [];
       throw new Error(`Failed to load family group: ${(err as Error).message}`, { cause: err });
     }
   }
@@ -370,7 +372,16 @@ export class Anton {
     const groupEvents = await getGroupEvents(group.groupCode);
     const pinnedBlocks = parsePinnedBlocks(groupEvents);
     const freshGroup = parseGroupInfo(group.groupCode, groupEvents);
-    return { ...freshGroup, pinnedBlocks };
+
+    // Re-apply cached displayName/logId enrichment — the fresh parse from events
+    // only has publicIds; enrichment requires a separate API call done at connect time.
+    const enrichedById = new Map(group.members.map((m) => [m.publicId, m]));
+    const members = freshGroup.members.map((m) => {
+      const cached = enrichedById.get(m.publicId);
+      return cached == null ? m : { ...m, displayName: cached.displayName, logId: cached.logId };
+    });
+
+    return { ...freshGroup, members, pinnedBlocks };
   }
 
   /** List all pinned blocks (assignments) in the group, with optional filters. */

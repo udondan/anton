@@ -242,8 +242,8 @@ const TOOLS: Tool[] = [
         levelPuid: {
           type: 'string',
           description:
-            'Level PUID from get_plan, e.g. "c-mat-4/pr7gkb". ' +
-            'Note: level puids are the same as block puids in the content hierarchy.',
+            'Level PUID from get_plan or get_topic_blocks → levels[].puid, e.g. "c-mat-4/pr7gkb". ' +
+            'Use the level PUID itself, not a block PUID.',
         },
         childName: {
           type: 'string',
