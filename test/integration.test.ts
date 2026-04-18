@@ -149,7 +149,7 @@ beforeAll(async () => {
 
   // ── Resolve "Test" child ─────────────────────────────────────────────────
   // Search all groups — the logId may only be available in a group where the
-  // child account is fully set up (e.g. the default Schroeder group).
+  // child account is fully set up (e.g. the family group).
   let testMember: (typeof allGroupInfos)[0]['members'][0] | undefined;
   for (const info of allGroupInfos) {
     testMember = info.members.find(
