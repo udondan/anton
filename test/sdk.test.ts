@@ -619,6 +619,64 @@ describe('Error paths', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Family group code path (getUserEvents / logId)
+// Detected automatically — skipped if the parent belongs to no family group.
+// ---------------------------------------------------------------------------
+
+describe('Family group (groupType === "family")', () => {
+  let familyAnton: Anton | undefined;
+  let familyChildName: string | undefined;
+
+  beforeAll(async () => {
+    const familyGroup = anton.listGroups().find((g) => g.groupType === 'family');
+    if (!familyGroup) return;
+    const familyChild = familyGroup.members.find((m) => m.role === 'pupil' && m.logId);
+    if (!familyChild) return;
+    familyChildName = familyChild.displayName ?? familyChild.publicId;
+    familyAnton = new Anton({
+      loginCode: process.env['ANTON_LOGIN_CODE']!,
+      groupName: familyGroup.groupName,
+    });
+    await familyAnton.connect();
+  }, 60_000);
+
+  it('listChildren returns a child with logId in the family group', () => {
+    if (!familyAnton) return;
+    const children = familyAnton.listChildren();
+    const withLogId = children.find((c) => c.logId);
+    expect(withLogId).toBeDefined();
+    expect(withLogId!.logId).toBeTruthy();
+  });
+
+  it('getProgress uses getUserEvents path and returns totalEvents > 0', async () => {
+    if (!familyAnton || !familyChildName) return;
+    const summary = await familyAnton.getProgress({ childName: familyChildName });
+    expect(typeof summary.totalEvents).toBe('number');
+    expect(summary.totalEvents).toBeGreaterThan(0);
+  }, 30_000);
+
+  it('getEvents returns events via the logId path', async () => {
+    if (!familyAnton || !familyChildName) return;
+    const events = await familyAnton.getEvents({ childName: familyChildName, limit: 10 });
+    expect(Array.isArray(events)).toBe(true);
+    expect(events.length).toBeGreaterThan(0);
+  }, 30_000);
+
+  it('compareChildren fetches real data for family group children', async () => {
+    if (!familyAnton || !familyChildName) return;
+    const result = await familyAnton.compareChildren() as {
+      children: Array<{ childName: string; levelsCompleted: number }>;
+    };
+    expect(result.children.length).toBeGreaterThan(0);
+    const found = result.children.find(
+      (c) => c.childName.toLowerCase() === familyChildName!.toLowerCase(),
+    );
+    expect(found).toBeDefined();
+    expect(typeof found!.levelsCompleted).toBe('number');
+  }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
 // Local assignments CRUD (no network)
 // ---------------------------------------------------------------------------
 

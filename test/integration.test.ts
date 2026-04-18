@@ -65,6 +65,9 @@ let groupInfo: GroupInfo;
 let testChildLogId: string;
 let testChildPublicId: string;
 let testFinishEvents: FinishLevelEvent[];
+let familyGroupInfo: GroupInfo | undefined;
+let familyChildLogId: string | undefined;
+let familyChildPublicId: string | undefined;
 
 // ---------------------------------------------------------------------------
 // Setup / teardown
@@ -133,6 +136,16 @@ beforeAll(async () => {
           (g) => g.groupName.toLowerCase() === targetGroupName.toLowerCase(),
         )
       : undefined) ?? allGroupInfos[0]!;
+
+  // ── Capture family group for family-path tests ───────────────────────────
+  familyGroupInfo = allGroupInfos.find((g) => g.groupType === 'family');
+  if (familyGroupInfo) {
+    const familyChild = familyGroupInfo.members.find((m) => m.role === 'pupil' && m.logId);
+    if (familyChild) {
+      familyChildLogId = familyChild.logId;
+      familyChildPublicId = familyChild.publicId;
+    }
+  }
 
   // ── Resolve "Test" child ─────────────────────────────────────────────────
   // Search all groups — the logId may only be available in a group where the
@@ -731,7 +744,61 @@ describe('compare_children', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 20–23. list_assignments / assign_lesson / update_assignment / delete_assignment
+// 20. family group code path (getUserEvents / logId)
+// Skipped automatically if the parent belongs to no family group.
+// ---------------------------------------------------------------------------
+
+describe('family group code path (getUserEvents / logId)', () => {
+  it('family group is detected by groupType', () => {
+    if (!familyGroupInfo) return;
+    expect(familyGroupInfo.groupType).toBe('family');
+    expect(familyGroupInfo.groupCode).toBeTruthy();
+    expect(familyGroupInfo.members.length).toBeGreaterThan(0);
+  });
+
+  it('getUserEvents with logId returns events', async () => {
+    if (!familyChildLogId) return;
+    const events = await getUserEvents(familyChildLogId);
+    expect(Array.isArray(events)).toBe(true);
+    expect(events.length).toBeGreaterThan(0);
+    for (const evt of events.slice(0, 5)) {
+      expect(evt.event).toBeTruthy();
+      expect(evt.created).toMatch(/^\d{4}-\d{2}-\d{2}/);
+    }
+  }, 30_000);
+
+  it('summariseProgress via logId returns totalEvents > 0', async () => {
+    if (!familyChildLogId) return;
+    const events = await getUserEvents(familyChildLogId);
+    const summary = summariseProgress(familyChildLogId, events);
+    expect(summary.logId).toBe(familyChildLogId);
+    expect(typeof summary.totalEvents).toBe('number');
+    expect(summary.totalEvents).toBeGreaterThan(0);
+    expect(Array.isArray(summary.completedLevels)).toBe(true);
+  }, 30_000);
+
+  it('compare_children uses logId path for family group members', async () => {
+    if (!familyGroupInfo || !familyChildLogId) return;
+    const pupils = familyGroupInfo.members.filter((m) => m.role === 'pupil');
+    const childRows = await Promise.all(
+      pupils.map(async (m) => {
+        if (!m.logId) return { name: m.displayName ?? m.publicId, finishEvents: [] as FinishLevelEvent[] };
+        const events = await getUserEvents(m.logId);
+        return {
+          name: m.displayName ?? m.publicId,
+          finishEvents: events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel'),
+        };
+      }),
+    );
+    const result = compareChildren(childRows);
+    expect(result.children.length).toBe(pupils.length);
+    const withData = result.children.find((c) => c.levelsCompleted > 0);
+    expect(withData).toBeDefined();
+  }, 45_000);
+});
+
+// ---------------------------------------------------------------------------
+// 21–24. list_assignments / assign_lesson / update_assignment / delete_assignment
 // ---------------------------------------------------------------------------
 
 describe('local assignments CRUD', () => {

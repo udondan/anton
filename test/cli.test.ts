@@ -492,6 +492,59 @@ describe('CLI lesson', () => {
 }, 60_000);
 
 // ---------------------------------------------------------------------------
+// CLI family group code path (getUserEvents / logId)
+// Detected via `groups` command — skipped if no family group exists.
+// ---------------------------------------------------------------------------
+
+describe('CLI family group (groupType === "family")', () => {
+  let familyGroupName: string | undefined;
+  let familyChildName: string | undefined;
+
+  beforeAll(async () => {
+    const { parsed } = await run(['groups']);
+    const groups = parsed as Array<{
+      groupType: string;
+      groupName: string;
+      members: Array<{ role: string; logId?: string; displayName?: string; publicId: string }>;
+    }>;
+    const familyGroup = groups.find((g) => g.groupType === 'family');
+    if (!familyGroup) return;
+    familyGroupName = familyGroup.groupName;
+    const familyChild = familyGroup.members.find((m) => m.role === 'pupil' && m.logId);
+    familyChildName = familyChild?.displayName ?? familyChild?.publicId;
+  }, 30_000);
+
+  it('--group <family> children returns a child with logId', async () => {
+    if (!familyGroupName) return;
+    const { parsed } = await run(['--group', familyGroupName, 'children']);
+    const children = parsed as Array<{ displayName?: string; publicId: string; logId?: string }>;
+    const withLogId = children.find((c) => c.logId);
+    expect(withLogId).toBeDefined();
+    expect(withLogId!.logId).toBeTruthy();
+  }, 30_000);
+
+  it('--group <family> progress returns logId and totalEvents > 0', async () => {
+    if (!familyGroupName || !familyChildName) return;
+    const { parsed } = await run(['--group', familyGroupName, 'progress', familyChildName]);
+    const result = parsed as { logId: string; totalEvents: number };
+    expect(result.logId).toBeTruthy();
+    expect(result.totalEvents).toBeGreaterThan(0);
+  }, 30_000);
+
+  it('--group <family> compare returns real data for family group children', async () => {
+    if (!familyGroupName || !familyChildName) return;
+    const { parsed } = await run(['--group', familyGroupName, 'compare']);
+    const result = parsed as { children: Array<{ childName: string; levelsCompleted: number }> };
+    expect(result.children.length).toBeGreaterThan(0);
+    const found = result.children.find(
+      (c) => c.childName.toLowerCase() === familyChildName!.toLowerCase(),
+    );
+    expect(found).toBeDefined();
+    expect(typeof found!.levelsCompleted).toBe('number');
+  }, 30_000);
+}, 60_000);
+
+// ---------------------------------------------------------------------------
 // Local assignments CRUD (assign / list / update-assignment / delete-assignment)
 // Atomic test — create then clean up to avoid leftover state.
 // ---------------------------------------------------------------------------

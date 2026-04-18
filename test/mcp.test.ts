@@ -554,6 +554,54 @@ describe('MCP tools/call group parameter', () => {
 }, 30_000);
 
 // ---------------------------------------------------------------------------
+// tools/call family group code path (getUserEvents / logId)
+// Detected via list_groups — skipped if no family group exists.
+// ---------------------------------------------------------------------------
+
+describe('MCP family group (groupType === "family")', () => {
+  let familyGroupName: string | undefined;
+  let familyChildName: string | undefined;
+
+  beforeAll(async () => {
+    const groups = await callTool('list_groups') as Array<{
+      groupType: string;
+      groupName: string;
+      members: Array<{ role: string; logId?: string; displayName?: string; publicId: string }>;
+    }>;
+    const familyGroup = groups.find((g) => g.groupType === 'family');
+    if (!familyGroup) return;
+    familyGroupName = familyGroup.groupName;
+    const familyChild = familyGroup.members.find((m) => m.role === 'pupil' && m.logId);
+    familyChildName = familyChild?.displayName ?? familyChild?.publicId;
+  }, 30_000);
+
+  it('list_children with family group returns a child with logId', async () => {
+    if (!familyGroupName) return;
+    const children = await callTool('list_children', { group: familyGroupName }) as Array<{
+      displayName?: string;
+      publicId: string;
+      logId?: string;
+    }>;
+    const withLogId = children.find((c) => c.logId);
+    expect(withLogId).toBeDefined();
+    expect(withLogId!.logId).toBeTruthy();
+  });
+
+  it('compare_children with family group returns real data', async () => {
+    if (!familyGroupName || !familyChildName) return;
+    const result = await callTool('compare_children', { group: familyGroupName }) as {
+      children: Array<{ childName: string; levelsCompleted: number }>;
+    };
+    expect(result.children.length).toBeGreaterThan(0);
+    const found = result.children.find(
+      (c) => c.childName.toLowerCase() === familyChildName!.toLowerCase(),
+    );
+    expect(found).toBeDefined();
+    expect(typeof found!.levelsCompleted).toBe('number');
+  }, 30_000);
+}, 60_000);
+
+// ---------------------------------------------------------------------------
 // tools/call pin_block / unpin_block
 // Pin and unpin are a single atomic test — they must not be split across
 // separate it() blocks or run concurrently with other files' pin tests.
