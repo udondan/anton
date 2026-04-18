@@ -169,6 +169,19 @@ describe('MCP tools/call list_plans', () => {
       expect(p.subject?.toLowerCase()).toContain('mat');
     }
   });
+
+  it('can filter by grade', async () => {
+    const plans = await callTool('list_plans', { grade: 4 }) as Array<{ grades: number[] }>;
+    expect(plans.length).toBeGreaterThan(0);
+    for (const p of plans) {
+      expect(p.grades).toContain(4);
+    }
+  });
+
+  it('can filter by language', async () => {
+    const plans = await callTool('list_plans', { language: 'de' }) as unknown[];
+    expect(plans.length).toBeGreaterThan(50);
+  });
 });
 
 describe('MCP tools/call get_progress', () => {
@@ -226,6 +239,18 @@ describe('MCP tools/call get_topic_blocks', () => {
     expect(result.blocks.length).toBeGreaterThan(0);
     expect(result.blocks[0]!.puid).toBeTruthy();
   });
+
+  it('returns blocks for topic found by title', async () => {
+    const topicsResult = await callTool('list_topics', { project: 'c-mat-4' }) as {
+      topics: Array<{ title: string }>;
+    };
+    const firstTitle = topicsResult.topics[0]!.title;
+    const result = await callTool('get_topic_blocks', {
+      project: 'c-mat-4',
+      topicTitle: firstTitle.slice(0, 8),
+    }) as { blocks: Array<{ puid: string }> };
+    expect(result.blocks.length).toBeGreaterThan(0);
+  });
 });
 
 describe('MCP tools/call get_plan', () => {
@@ -276,6 +301,14 @@ describe('MCP tools/call get_events', () => {
       expect(e.event).toBe('finishLevel');
     }
   });
+
+  it('returns empty array when since is in the far future', async () => {
+    const events = await callTool('get_events', {
+      childName: CHILD_NAME,
+      since: '2099-01-01',
+    }) as unknown[];
+    expect(events).toHaveLength(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -306,6 +339,14 @@ describe('MCP tools/call check_assignment_completion', () => {
     expect(result.childName).toBe(CHILD_NAME);
     expect(Array.isArray(result.assignments)).toBe(true);
   });
+
+  it('filtered to a far-future week returns empty assignments', async () => {
+    const result = await callTool('check_assignment_completion', {
+      childName: CHILD_NAME,
+      week: '2099-01-01',
+    }) as { assignments: unknown[] };
+    expect(result.assignments).toHaveLength(0);
+  }, 30_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -327,6 +368,15 @@ describe('MCP tools/call get_weekly_summary', () => {
     expect(result.weekStartAt).toBe('2025-01-06');
     expect(typeof result.levelsCompleted).toBe('number');
     expect(typeof result.averageAccuracy).toBe('number');
+  }, 30_000);
+
+  it('defaults weekStartAt to the current Monday when omitted', async () => {
+    const result = await callTool('get_weekly_summary', { childName: CHILD_NAME }) as {
+      weekStartAt: string;
+    };
+    expect(result.weekStartAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const d = new Date(result.weekStartAt + 'T12:00:00Z');
+    expect(d.getUTCDay()).toBe(1); // Monday
   }, 30_000);
 });
 
@@ -422,6 +472,58 @@ describe('MCP tools/call local assignments CRUD', () => {
 });
 
 // ---------------------------------------------------------------------------
+// tools/call error paths
+// ---------------------------------------------------------------------------
+
+describe('MCP error paths', () => {
+  it('get_events with unknown child name returns isError=true', async () => {
+    const response = await client.callTool({ name: 'get_events', arguments: { childName: 'NoSuchChildXYZ' } });
+    expect(response.isError).toBe(true);
+    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toMatch(/not found/i);
+  });
+
+  it('get_topic_blocks with out-of-range topicIndex returns isError=true', async () => {
+    const response = await client.callTool({ name: 'get_topic_blocks', arguments: { project: 'c-mat-4', topicIndex: 9999 } });
+    expect(response.isError).toBe(true);
+    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toMatch(/out of range/i);
+  });
+
+  it('pin_block with no resolution params returns isError=true', async () => {
+    const response = await client.callTool({ name: 'pin_block', arguments: {} });
+    expect(response.isError).toBe(true);
+  });
+
+  it('unpin_block when no matching pin exists returns isError=true', async () => {
+    const response = await client.callTool({
+      name: 'unpin_block',
+      arguments: { blockPuid: 'nonexistent/puid', weekStartAt: '2099-01-01' },
+    });
+    expect(response.isError).toBe(true);
+    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toMatch(/no pin found/i);
+  }, 15_000);
+
+  it('get_level_progress with no child param returns isError=true', async () => {
+    const response = await client.callTool({ name: 'get_level_progress', arguments: { levelPuid: 'c-mat-4/xxxxx' } });
+    expect(response.isError).toBe(true);
+    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toMatch(/provide childName or childPublicId/i);
+  });
+
+  it('update_assignment with unknown id returns isError=true', async () => {
+    const response = await client.callTool({
+      name: 'update_assignment',
+      arguments: { id: '00000000-0000-0000-0000-000000000000', status: 'completed' },
+    });
+    expect(response.isError).toBe(true);
+    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toMatch(/not found/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // tools/call group parameter
 // ---------------------------------------------------------------------------
 
@@ -510,5 +612,32 @@ describe('MCP tools/call pin_block / unpin_block', () => {
       childPublicId: testChild.publicId,
     }) as Array<{ puid: string; weekStartAt: string }>;
     expect(after.find((a) => a.puid === block.puid && a.weekStartAt === FAR_FUTURE_WEEK)).toBeUndefined();
+  }, 60_000);
+
+  it('pins by topicTitle and blockTitle then unpins', async () => {
+    const topicsResult = await callTool('list_topics', { project: 'c-mat-4' }) as {
+      topics: Array<{ title: string }>;
+    };
+    const firstTopicTitle = topicsResult.topics[0]!.title;
+    const blocksResult = await callTool('get_topic_blocks', { project: 'c-mat-4', topicIndex: 0 }) as {
+      blocks: Array<{ puid: string; title: string }>;
+    };
+    const firstBlockTitle = blocksResult.blocks[0]!.title;
+
+    const pinResult = await callTool('pin_block', {
+      project: 'c-mat-4',
+      topicTitle: firstTopicTitle.slice(0, 8),
+      blockTitle: firstBlockTitle.slice(0, 8),
+      weekStartAt: '2099-08-04',
+      childName: CHILD_NAME,
+    }) as { pinned: boolean; blockPuid: string };
+    expect(pinResult.pinned).toBe(true);
+    expect(pinResult.blockPuid).toBe(blocksResult.blocks[0]!.puid);
+
+    const unpinResult = await callTool('unpin_block', {
+      blockPuid: pinResult.blockPuid,
+      weekStartAt: '2099-08-04',
+    }) as { unpinned: boolean };
+    expect(unpinResult.unpinned).toBe(true);
   }, 60_000);
 });

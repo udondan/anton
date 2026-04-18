@@ -25,6 +25,8 @@ const TEMP_ASSIGNMENTS = join(tmpdir(), `anton-sdk-test-${process.pid}.json`);
 // Each test file uses a distinct far-future week so concurrent runs never
 // collide on the same pin (sdk=2099-03, mcp=2099-06, integration=2099-01).
 const FAR_FUTURE_WEEK = '2099-03-01';
+const FAR_FUTURE_WEEK_TITLE = '2099-09-01'; // sdk title-based pin test
+const FAR_FUTURE_WEEK_GROUP = '2099-12-01'; // sdk group-wide (no child) pin test
 
 // ---------------------------------------------------------------------------
 // Shared fixture
@@ -88,6 +90,21 @@ describe('Anton.connect / getStatus', () => {
   it('connect() is idempotent — second call is a no-op', async () => {
     await expect(anton.connect()).resolves.toBeUndefined();
   });
+});
+
+// ---------------------------------------------------------------------------
+// connect via logId
+// ---------------------------------------------------------------------------
+
+describe('Anton.connect via logId', () => {
+  it('authenticates using the parent logId from an existing session', async () => {
+    const { parent } = anton.getStatus();
+    const antonViaLogId = new Anton({ logId: parent!.logId });
+    await antonViaLogId.connect();
+    const newStatus = antonViaLogId.getStatus();
+    expect(newStatus.parent!.logId).toBe(parent!.logId);
+    expect(newStatus.totalGroups).toBeGreaterThan(0);
+  }, 30_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -230,6 +247,11 @@ describe('Anton.listPlans', () => {
       expect(p.grades).toContain(4);
     }
   });
+
+  it('can filter by language', async () => {
+    const de = await anton.listPlans({ language: 'de' });
+    expect(de.length).toBeGreaterThan(50);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -283,6 +305,12 @@ describe('Anton.getProgress', () => {
     expect(Array.isArray(summary.completedLevels)).toBe(true);
     expect(typeof summary.distinctBlocksCompleted).toBe('number');
   });
+
+  it('respects the since date — far-future yields 0 events', async () => {
+    const summary = await anton.getProgress({ childName: CHILD_NAME, since: '2099-01-01' });
+    expect(summary.totalEvents).toBe(0);
+    expect(summary.completedLevels).toHaveLength(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -302,6 +330,17 @@ describe('Anton.getWeeklySummary', () => {
     expect(typeof summary.averageAccuracy).toBe('number');
     expect(summary.averageAccuracy).toBeGreaterThanOrEqual(0);
     expect(summary.averageAccuracy).toBeLessThanOrEqual(1);
+  }, 30_000);
+
+  it('defaults weekStartAt to the current Monday when omitted', async () => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    now.setDate(now.getDate() + diff);
+    const expectedMonday = now.toISOString().slice(0, 10);
+
+    const summary = await anton.getWeeklySummary({ childName: CHILD_NAME });
+    expect(summary.weekStartAt).toBe(expectedMonday);
   }, 30_000);
 });
 
@@ -348,6 +387,63 @@ describe('Anton.pinBlock / unpinBlock', () => {
     });
     expect(after.find((a) => a.puid === block.puid && a.weekStartAt === FAR_FUTURE_WEEK)).toBeUndefined();
   }, 45_000);
+
+  it('pins using topicTitle and blockTitle then unpins', async () => {
+    const topics = await anton.listTopics({ project: 'c-mat-4' });
+    const firstTopicTitle = topics.topics[0]!.title;
+    const blocks = await anton.getTopicBlocks({ project: 'c-mat-4', topicIndex: 0 });
+    const firstBlockTitle = blocks.blocks[0]!.title;
+
+    const pinResult = await anton.pinBlock({
+      project: 'c-mat-4',
+      topicTitle: firstTopicTitle.slice(0, 8),
+      blockTitle: firstBlockTitle.slice(0, 8),
+      weekStartAt: FAR_FUTURE_WEEK_TITLE,
+      childName: CHILD_NAME,
+    });
+    expect(pinResult.pinned).toBe(true);
+    expect(pinResult.blockPuid).toBe(blocks.blocks[0]!.puid);
+
+    await anton.unpinBlock({ blockPuid: pinResult.blockPuid, weekStartAt: FAR_FUTURE_WEEK_TITLE });
+  }, 45_000);
+
+  it('defaults weekStartAt to the current Monday when omitted', async () => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    now.setDate(now.getDate() + diff);
+    const expectedMonday = now.toISOString().slice(0, 10);
+
+    const children = anton.listChildren();
+    const testChild = children.find((c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase())!;
+
+    const pinResult = await anton.pinBlock({
+      project: 'c-mat-4',
+      topicIndex: 0,
+      blockIndex: 0,
+      childName: CHILD_NAME,
+    });
+    expect(pinResult.weekStartAt).toBe(expectedMonday);
+
+    await anton.unpinBlock({
+      blockPuid: pinResult.blockPuid,
+      weekStartAt: pinResult.weekStartAt,
+      childPublicId: testChild.publicId,
+    });
+  }, 45_000);
+
+  it('pins group-wide without a child (childPublicId is null)', async () => {
+    const pinResult = await anton.pinBlock({
+      project: 'c-mat-4',
+      topicIndex: 0,
+      blockIndex: 0,
+      weekStartAt: FAR_FUTURE_WEEK_GROUP,
+    });
+    expect(pinResult.pinned).toBe(true);
+    expect(pinResult.childPublicId).toBeNull();
+
+    await anton.unpinBlock({ blockPuid: pinResult.blockPuid, weekStartAt: FAR_FUTURE_WEEK_GROUP });
+  }, 45_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -366,6 +462,11 @@ describe('Anton.getEvents', () => {
     for (const e of events) {
       expect((e as { event: string }).event).toBe('finishLevel');
     }
+  });
+
+  it('returns empty array when since is in the far future', async () => {
+    const events = await anton.getEvents({ childName: CHILD_NAME, since: '2099-01-01' });
+    expect(events).toHaveLength(0);
   });
 });
 
@@ -390,13 +491,28 @@ describe('Anton.getLevelProgress', () => {
 // ---------------------------------------------------------------------------
 
 describe('Anton.getLesson', () => {
-  it('returns lesson content for a known level fileId', async () => {
+  let baseFileId: string;
+
+  beforeAll(async () => {
     const topicResult = await anton.getTopicBlocks({ project: 'c-mat-4', topicIndex: 0 });
     const level = topicResult.blocks[0]!.levels.find((lv) => (lv as { fileId?: string }).fileId);
-    expect(level).toBeDefined();
-    const fileId = (level as { fileId: string }).fileId;
+    baseFileId = (level as { fileId: string }).fileId; // e.g. "level/c-mat-4/..."
+  }, 30_000);
 
-    const lesson = await anton.getLesson({ fileId });
+  it('returns lesson content for a known level fileId', async () => {
+    const lesson = await anton.getLesson({ fileId: baseFileId });
+    expect(lesson).toBeDefined();
+  }, 30_000);
+
+  it('accepts fileId without the level/ prefix', async () => {
+    const noPrefix = baseFileId.replace(/^level\//, ''); // "c-mat-4/..."
+    const lesson = await anton.getLesson({ fileId: noPrefix });
+    expect(lesson).toBeDefined();
+  }, 30_000);
+
+  it('accepts fileId with the /../ prefix from plan data', async () => {
+    const dirtyPath = '/..' + baseFileId.slice('level'.length); // "/../c-mat-4/..."
+    const lesson = await anton.getLesson({ fileId: dirtyPath });
     expect(lesson).toBeDefined();
   }, 30_000);
 });
@@ -410,6 +526,11 @@ describe('Anton.checkAssignmentCompletion', () => {
     const result = await anton.checkAssignmentCompletion({ childName: CHILD_NAME });
     expect((result as { childName: string }).childName).toBe(CHILD_NAME);
     expect(Array.isArray((result as { assignments: unknown[] }).assignments)).toBe(true);
+  }, 30_000);
+
+  it('filtered to a far-future week returns empty assignments', async () => {
+    const result = await anton.checkAssignmentCompletion({ childName: CHILD_NAME, week: '2099-01-01' });
+    expect((result as { assignments: unknown[] }).assignments).toHaveLength(0);
   }, 30_000);
 });
 
@@ -443,6 +564,12 @@ describe('Anton.getActivityTimeline', () => {
     expect(typeof (result as { activeDays: number }).activeDays).toBe('number');
     expect(Array.isArray((result as { dailyActivity: unknown[] }).dailyActivity)).toBe(true);
   }, 30_000);
+
+  it('returns 0 active days when since is in the far future', async () => {
+    const result = await anton.getActivityTimeline({ childName: CHILD_NAME, since: '2099-01-01' });
+    expect((result as { activeDays: number }).activeDays).toBe(0);
+    expect((result as { dailyActivity: unknown[] }).dailyActivity).toHaveLength(0);
+  }, 30_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -458,6 +585,38 @@ describe('Anton.compareChildren', () => {
     expect(first.childName).toBeTruthy();
     expect(typeof first.totalStars).toBe('number');
   }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// Error paths
+// ---------------------------------------------------------------------------
+
+describe('Error paths', () => {
+  it('resolveChild throws for an unknown child name', async () => {
+    await expect(anton.getProgress({ childName: 'NoSuchChildXYZ' })).rejects.toThrow(/not found/i);
+  });
+
+  it('getTopicBlocks throws for an out-of-range topicIndex', async () => {
+    await expect(
+      anton.getTopicBlocks({ project: 'c-mat-4', topicIndex: 9999 }),
+    ).rejects.toThrow(/out of range/i);
+  });
+
+  it('pinBlock throws when neither project nor blockPuid is provided', async () => {
+    await expect(anton.pinBlock({ weekStartAt: FAR_FUTURE_WEEK })).rejects.toThrow();
+  });
+
+  it('unpinBlock throws when no matching pin exists', async () => {
+    await expect(
+      anton.unpinBlock({ blockPuid: 'nonexistent/puid', weekStartAt: '2099-01-01' }),
+    ).rejects.toThrow(/no pin found/i);
+  }, 15_000);
+
+  it('getLevelProgress throws when neither childName nor childPublicId is provided', async () => {
+    await expect(
+      anton.getLevelProgress({ levelPuid: 'c-mat-4/xxxxx' }),
+    ).rejects.toThrow(/provide childName or childPublicId/i);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -497,5 +656,11 @@ describe('Anton local assignments', () => {
   it('deleteAssignment removes the entry', () => {
     anton.deleteAssignment(id);
     expect(anton.listAssignments()).toHaveLength(0);
+  });
+
+  it('updateAssignment throws for an unknown id', () => {
+    expect(() =>
+      anton.updateAssignment('00000000-0000-0000-0000-000000000000', { status: 'completed' }),
+    ).toThrow(/not found/i);
   });
 });

@@ -430,7 +430,7 @@ export async function getPlan(project: string, etag = '0'): Promise<Plan> {
  */
 export async function getLessonContent(fileId: string, etag = '0'): Promise<LessonContent> {
   // Accept: "level/c-mat-4/...", "c-mat-4/...", or "/../c-mat-4/..." (path from plan data)
-  const stripped = fileId.startsWith('/..') ? fileId.replace('/..', '') : fileId;
+  const stripped = fileId.replace(/^\/\.\.\//, '');
   const normalised = stripped.startsWith('level/') ? stripped : `level/${stripped}`;
   const response = await axios.get<LessonContent>('https://content.anton.app/files/', {
     params: { fileId: normalised, etag },
