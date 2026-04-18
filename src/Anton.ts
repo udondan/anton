@@ -255,12 +255,14 @@ export class Anton {
     return this.allGroups[0];
   }
 
-  /** Find a child by display name or publicId within the configured group. */
+  /** Find a pupil by display name or publicId within the configured group. */
   private resolveChild(name: string, groupName?: string): ResolvedChild {
     const group = this.requireGroup(groupName);
     const key = name.toLowerCase();
     const m = group.members.find(
-      (mem) => mem.displayName?.toLowerCase() === key || mem.publicId.toLowerCase() === key,
+      (mem) =>
+        mem.role === 'pupil' &&
+        (mem.displayName?.toLowerCase() === key || mem.publicId.toLowerCase() === key),
     );
     if (!m) {
       throw new Error(
@@ -598,6 +600,7 @@ export class Anton {
       if (since !== '1970-01-01') events = events.filter((e) => e.created >= since);
     }
     if (opts.eventType) events = events.filter((e) => e.event === opts.eventType);
+    events = [...events].sort((a, b) => b.created.localeCompare(a.created));
     return events.slice(0, limit);
   }
 

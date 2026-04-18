@@ -225,7 +225,7 @@ export function extractGroupCodes(events: AntonEvent[]): string[] {
       codes.add(evt.groupCode);
     }
   }
-  return Array.from(codes);
+  return Array.from(codes).sort();
 }
 
 /**

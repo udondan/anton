@@ -7,7 +7,7 @@
  * ~/.config/anton/assignments.json.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -45,6 +45,7 @@ function save(store: AssignmentStore): void {
   const path = storePath();
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(store, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  chmodSync(path, 0o600);
 }
 
 // ---------------------------------------------------------------------------
