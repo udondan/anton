@@ -32,8 +32,12 @@ function load(): AssignmentStore {
   if (!existsSync(path)) return { assignments: [] };
   try {
     return JSON.parse(readFileSync(path, 'utf-8')) as AssignmentStore;
-  } catch {
-    return { assignments: [] };
+  } catch (err) {
+    throw new Error(
+      `Assignments file at ${path} is corrupted and cannot be read. ` +
+        `Back it up or delete it before retrying. Cause: ${(err as Error).message}`,
+      { cause: err },
+    );
   }
 }
 

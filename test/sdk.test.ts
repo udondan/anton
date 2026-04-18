@@ -24,9 +24,9 @@ const TEMP_ASSIGNMENTS = join(tmpdir(), `anton-sdk-test-${process.pid}.json`);
 
 // Each test file uses a distinct far-future week so concurrent runs never
 // collide on the same pin (sdk=2099-03/2099-10/2099-12, mcp=2099-06, cli=2099-09, integration=2099-01).
-const FAR_FUTURE_WEEK = '2099-03-01';
-const FAR_FUTURE_WEEK_TITLE = '2099-10-01'; // sdk title-based pin test
-const FAR_FUTURE_WEEK_GROUP = '2099-12-01'; // sdk group-wide (no child) pin test
+const FAR_FUTURE_WEEK = '2099-03-02'; // Monday
+const FAR_FUTURE_WEEK_TITLE = '2099-10-05'; // Monday; sdk title-based pin test
+const FAR_FUTURE_WEEK_GROUP = '2099-12-07'; // Monday; sdk group-wide (no child) pin test
 
 // ---------------------------------------------------------------------------
 // Shared fixture
@@ -333,9 +333,9 @@ describe('Anton.getWeeklySummary', () => {
 
   it('defaults weekStartAt to the current Monday when omitted', async () => {
     const now = new Date();
-    const day = now.getDay();
+    const day = now.getUTCDay();
     const diff = day === 0 ? -6 : 1 - day;
-    now.setDate(now.getDate() + diff);
+    now.setUTCDate(now.getUTCDate() + diff);
     const expectedMonday = now.toISOString().slice(0, 10);
 
     const summary = await anton.getWeeklySummary({ childName: CHILD_NAME });
@@ -412,9 +412,9 @@ describe('Anton.pinBlock / unpinBlock', () => {
 
   it('defaults weekStartAt to the current Monday when omitted', async () => {
     const now = new Date();
-    const day = now.getDay();
+    const day = now.getUTCDay();
     const diff = day === 0 ? -6 : 1 - day;
-    now.setDate(now.getDate() + diff);
+    now.setUTCDate(now.getUTCDate() + diff);
     const expectedMonday = now.toISOString().slice(0, 10);
 
     const children = anton.listChildren();

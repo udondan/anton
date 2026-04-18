@@ -93,7 +93,7 @@ describe('CLI meta', () => {
 // Uses FAR_FUTURE_WEEK=2099-09 (sdk=2099-03/2099-10/2099-12, mcp=2099-06, integration=2099-01).
 // ---------------------------------------------------------------------------
 
-const FAR_FUTURE_WEEK = '2099-09-01';
+const FAR_FUTURE_WEEK = '2099-09-07'; // Monday
 
 describe('CLI pin / unpin', () => {
   requireCredentials();

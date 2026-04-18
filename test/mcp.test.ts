@@ -747,7 +747,7 @@ describe('MCP tools/call pin_block / unpin_block', () => {
       project: 'c-mat-4',
       topicTitle: firstTopicTitle.slice(0, 8),
       blockTitle: firstBlockTitle.slice(0, 8),
-      weekStartAt: '2099-08-04',
+      weekStartAt: '2099-08-03',
       childName: CHILD_NAME,
     })) as { pinned: boolean; blockPuid: string };
     expect(pinResult.pinned).toBe(true);
@@ -755,7 +755,7 @@ describe('MCP tools/call pin_block / unpin_block', () => {
 
     const unpinResult = (await callTool('unpin_block', {
       blockPuid: pinResult.blockPuid,
-      weekStartAt: '2099-08-04',
+      weekStartAt: '2099-08-03',
     })) as { unpinned: boolean };
     expect(unpinResult.unpinned).toBe(true);
   }, 60_000);
