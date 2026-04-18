@@ -424,18 +424,7 @@ export class Anton {
 
     let childPublicId = opts.childPublicId;
     if (opts.childName) {
-      const childName = opts.childName;
-      const match = group.members.find(
-        (m) =>
-          m.displayName?.toLowerCase() === childName.toLowerCase() ||
-          m.publicId.toLowerCase() === childName.toLowerCase(),
-      );
-      if (!match) {
-        throw new Error(
-          `Child "${opts.childName}" not found. Use getGroup() to see member names or public IDs.`,
-        );
-      }
-      childPublicId = match.publicId;
+      childPublicId = this.resolveChild(opts.childName, opts.groupName).publicId;
     }
 
     let blockPuid = opts.blockPuid;

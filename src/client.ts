@@ -6,6 +6,7 @@
  * The API is undocumented and may change without notice.
  */
 
+import { randomUUID } from 'node:crypto';
 import axios, { type AxiosRequestConfig } from 'axios';
 import type {
   AntonEvent,
@@ -24,8 +25,8 @@ import type {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Device log ID from the browser's localStorage */
-const DEVICE_LOG_ID = 'D-YT8Q-uusgorxroQWveIBP2afCCXK3pYR';
+/** Random device log ID generated once per process run — avoids sharing a hardcoded identifier. */
+const DEVICE_LOG_ID = `D-${randomUUID().replace(/-/g, '').slice(0, 28)}`;
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
