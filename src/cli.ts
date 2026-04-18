@@ -36,10 +36,13 @@
  *                      (overridden by the global --group flag)
  */
 
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { Anton } from './Anton.js';
 import { startMcpServer } from './mcp.js';
 import { clearCache, isGroupInfoFresh, readCache, updateGroupInfoCache, writeCache } from './session-cache.js';
+
+const { version } = (createRequire(import.meta.url))('../package.json') as { version: string };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -130,7 +133,7 @@ const program = new Command();
 program
   .name('anton')
   .description("CLI for the @udondan/anton SDK — monitor children's learning on anton.app")
-  .version('1.0.0')
+  .version(version)
   .option('--no-cache', 'Skip the session cache and always perform a fresh login')
   .option('--group <name>', 'Group name to operate on (overrides ANTON_GROUP env var)');
 

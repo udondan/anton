@@ -5,6 +5,7 @@
  * Start via: anton mcp
  */
 
+import { createRequire } from 'node:module';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -14,6 +15,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { Anton } from './Anton.js';
+
+const { version } = (createRequire(import.meta.url))('../package.json') as { version: string };
 
 // ---------------------------------------------------------------------------
 // Shared parameter snippets
@@ -523,7 +526,7 @@ type Args = Record<string, unknown>;
 
 export async function startMcpServer(anton: Anton): Promise<void> {
   const server = new Server(
-    { name: 'anton', version: '1.0.0' },
+    { name: 'anton', version },
     { capabilities: { tools: {} } },
   );
 
