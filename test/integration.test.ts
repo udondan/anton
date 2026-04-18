@@ -201,7 +201,6 @@ describe('get_status', () => {
     const pupils = groupInfo.members.filter((m) => m.role === 'pupil');
     const test = pupils.find((m) => m.displayName?.toLowerCase() === CHILD_NAME.toLowerCase());
     expect(test).toBeDefined();
-    expect(test!.logId).toBeTruthy();
     expect(test!.publicId).toBeTruthy();
   });
 });
@@ -401,10 +400,9 @@ describe('list_children', () => {
     expect(pupils.length).toBeGreaterThan(0);
   });
 
-  it('Test child is in the list with logId and publicId', () => {
+  it('Test child is in the list with publicId', () => {
     const pupils = groupInfo.members.filter((m) => m.role === 'pupil');
     const test = pupils.find((m) => m.displayName?.toLowerCase() === CHILD_NAME.toLowerCase());
-    expect(test?.logId).toBeTruthy();
     expect(test?.publicId).toBeTruthy();
   });
 });

@@ -21,6 +21,7 @@ import {
   loginWithCode,
   loginWithLogId,
   getUserEvents,
+  getGroupMemberEvents,
   getGroupEvents,
   extractGroupCodes,
   parseGroupInfo,
@@ -48,6 +49,7 @@ import {
   deleteAssignment as deleteAssignmentStore,
 } from './assignments.js';
 import type {
+  AntonEvent,
   Assignment,
   AssignmentStatus,
   FinishLevelEvent,
@@ -74,9 +76,10 @@ export interface AntonConfig {
 }
 
 interface ResolvedChild {
-  logId: string;
-  publicId?: string;
+  logId?: string;
+  publicId: string;
   displayName: string;
+  groupCode: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -245,17 +248,31 @@ export class Anton {
     return this.allGroups[0]!;
   }
 
-  /** Search all groups for a child by display name. */
-  private resolveChild(name: string): ResolvedChild {
-    for (const group of this.allGroups) {
-      const m = group.members.find(
-        (mem) => mem.displayName?.toLowerCase() === name.toLowerCase(),
-      );
-      if (m?.logId) {
-        return { logId: m.logId, publicId: m.publicId, displayName: m.displayName ?? name };
+  /** Find a child by display name within the configured group. */
+  private resolveChild(name: string, groupName?: string): ResolvedChild {
+    const group = this.requireGroup(groupName);
+    const m = group.members.find(
+      (mem) => mem.displayName?.toLowerCase() === name.toLowerCase(),
+    );
+    if (!m) {
+      throw new Error(`Child "${name}" not found in group "${group.groupName}". Use listChildren() to see member names.`);
+    }
+    return { logId: m.logId, publicId: m.publicId, displayName: m.displayName ?? name, groupCode: group.groupCode };
+  }
+
+  /** Fetch events for a child, using logId (family groups) or publicId+groupCode (class groups). */
+  private async getChildEvents(child: ResolvedChild, since = '1970-01-01'): Promise<FinishLevelEvent[]> {
+    const parent = this.requireParent();
+    let events: AntonEvent[];
+    if (child.logId) {
+      events = await getUserEvents(child.logId, since);
+    } else {
+      events = await getGroupMemberEvents(child.publicId, child.groupCode, parent.logId, parent.authToken);
+      if (since !== '1970-01-01') {
+        events = events.filter((e) => (e.created ?? '') >= since);
       }
     }
-    throw new Error(`Child "${name}" not found in any group. Use listGroups() to see member names.`);
+    return events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
   }
 
   private currentWeekMonday(): string {
@@ -500,8 +517,15 @@ export class Anton {
   async getProgress(opts: { childName: string; since?: string }) {
     const since = opts.since ?? '1970-01-01';
     const child = this.resolveChild(opts.childName);
-    const events = await getUserEvents(child.logId, since);
-    return summariseProgress(child.logId, events);
+    const parent = this.requireParent();
+    let events: AntonEvent[];
+    if (child.logId) {
+      events = await getUserEvents(child.logId, since);
+    } else {
+      events = await getGroupMemberEvents(child.publicId, child.groupCode, parent.logId, parent.authToken);
+      if (since !== '1970-01-01') events = events.filter((e) => (e.created ?? '') >= since);
+    }
+    return summariseProgress(child.logId ?? child.publicId, events);
   }
 
   /** Fetch raw event log for a child. */
@@ -514,7 +538,14 @@ export class Anton {
     const since = opts.since ?? '1970-01-01';
     const limit = opts.limit ?? 100;
     const child = this.resolveChild(opts.childName);
-    let events = await getUserEvents(child.logId, since);
+    const parent = this.requireParent();
+    let events: AntonEvent[];
+    if (child.logId) {
+      events = await getUserEvents(child.logId, since);
+    } else {
+      events = await getGroupMemberEvents(child.publicId, child.groupCode, parent.logId, parent.authToken);
+      if (since !== '1970-01-01') events = events.filter((e) => (e.created ?? '') >= since);
+    }
     if (opts.eventType) events = events.filter((e) => e.event === opts.eventType);
     return events.slice(0, limit);
   }
@@ -528,9 +559,7 @@ export class Anton {
     const parent = this.requireParent();
     let childPublicId = opts.childPublicId;
     if (opts.childName) {
-      const child = this.resolveChild(opts.childName);
-      if (!child.publicId) throw new Error(`Child "${opts.childName}" has no publicId.`);
-      childPublicId = child.publicId;
+      childPublicId = this.resolveChild(opts.childName).publicId;
     }
     if (!childPublicId) throw new Error('Provide childName or childPublicId');
     return getLevelReviewReport(opts.levelPuid, childPublicId, parent.logId, parent.authToken);
@@ -679,7 +708,7 @@ export class Anton {
     week?: string;
     groupName?: string;
   }) {
-    const child = this.resolveChild(opts.childName);
+    const child = this.resolveChild(opts.childName, opts.groupName);
     const group = this.requireGroup(opts.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
     const pinnedBlocks = parsePinnedBlocks(groupEvents);
@@ -693,8 +722,7 @@ export class Anton {
     const plans = await Promise.all(projects.map((p) => getPlan(p)));
     const planCache = new Map(projects.map((p, i) => [p, plans[i]!]));
 
-    const events = await getUserEvents(child.logId);
-    const finishEvents = events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
+    const finishEvents = await this.getChildEvents(child);
 
     return checkAssignmentCompletion(
       child.displayName,
@@ -712,7 +740,7 @@ export class Anton {
     weekStartAt?: string;
     groupName?: string;
   }) {
-    const child = this.resolveChild(opts.childName);
+    const child = this.resolveChild(opts.childName, opts.groupName);
     const weekStartAt = opts.weekStartAt ?? this.currentWeekMonday();
 
     const group = this.requireGroup(opts.groupName);
@@ -721,9 +749,7 @@ export class Anton {
       (b) => b.weekStartAt === weekStartAt && (b.subgroup == null || b.subgroup === child.publicId),
     );
     const assignedBlockPuids = new Set(pinnedBlocks.map((b) => b.puid));
-
-    const events = await getUserEvents(child.logId);
-    const finishEvents = events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
+    const finishEvents = await this.getChildEvents(child);
 
     return getWeeklySummary(child.displayName, weekStartAt, finishEvents, assignedBlockPuids);
   }
@@ -731,8 +757,7 @@ export class Anton {
   /** Per-subject accuracy, stars, time, and trend. */
   async getSubjectSummary(opts: { childName: string; subject?: string }) {
     const child = this.resolveChild(opts.childName);
-    const events = await getUserEvents(child.logId);
-    const finishEvents = events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
+    const finishEvents = await this.getChildEvents(child);
     return getSubjectSummary(child.displayName, finishEvents, opts.subject);
   }
 
@@ -740,25 +765,25 @@ export class Anton {
   async getActivityTimeline(opts: { childName: string; since?: string }) {
     const since = opts.since ?? '1970-01-01';
     const child = this.resolveChild(opts.childName);
-    const events = await getUserEvents(child.logId, since);
-    const finishEvents = events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
+    const finishEvents = await this.getChildEvents(child, since);
     return getActivityTimeline(child.displayName, finishEvents, since);
   }
 
   /** Side-by-side comparison of all children in a group. */
   async compareChildren(opts?: { groupName?: string }) {
     const group = this.requireGroup(opts?.groupName);
+    const parent = this.requireParent();
     const pupils = group.members.filter((m) => m.role === 'pupil');
     const rows = await Promise.all(
       pupils.map(async (m) => {
-        if (!m.logId) {
-          return { name: m.displayName ?? m.publicId, finishEvents: [] as FinishLevelEvent[] };
-        }
-        const events = await getUserEvents(m.logId);
-        const finishEvents = events.filter(
-          (e): e is FinishLevelEvent => e.event === 'finishLevel',
-        );
-        return { name: m.displayName ?? m.publicId, finishEvents };
+        const child: ResolvedChild = {
+          logId: m.logId,
+          publicId: m.publicId,
+          displayName: m.displayName ?? m.publicId,
+          groupCode: group.groupCode,
+        };
+        const finishEvents = await this.getChildEvents(child);
+        return { name: child.displayName, finishEvents };
       }),
     );
     return compareChildren(rows);

@@ -213,11 +213,10 @@ describe('Anton.listChildren', () => {
     expect(children.length).toBeGreaterThan(0);
   });
 
-  it('includes the Test child with logId and publicId', () => {
+  it('includes the Test child with publicId', () => {
     const children = anton.listChildren();
     const test = children.find((c) => c.displayName?.toLowerCase() === CHILD_NAME.toLowerCase());
     expect(test).toBeDefined();
-    expect(test!.logId).toBeTruthy();
     expect(test!.publicId).toBeTruthy();
   });
 });

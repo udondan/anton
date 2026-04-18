@@ -481,6 +481,33 @@ export async function getGroupMemberDescriptions(
   return [...pupil, ...teacher, ...admin];
 }
 
+/**
+ * Fetch the event timeline for a group member using the parent's credentials.
+ * Used for class groups where the child's logId is not exposed by the API.
+ * Events are returned in the same AntonEvent shape as getUserEvents().
+ */
+export async function getGroupMemberEvents(
+  publicId: string,
+  groupCode: string,
+  parentLogId: string,
+  parentAuthToken: string,
+): Promise<AntonEvent[]> {
+  const data = await pllsCall<{
+    status: string;
+    events?: Array<{ created: string; event: string; data: Record<string, unknown> }>;
+  }>(
+    'getUserTimelineEvents/query',
+    { publicId, groupCode },
+    parentLogId,
+    parentAuthToken,
+  );
+  return (data.events ?? []).map(({ created, event, data: d }) => ({
+    created,
+    event,
+    ...d,
+  })) as AntonEvent[];
+}
+
 // ---------------------------------------------------------------------------
 // Progress
 // ---------------------------------------------------------------------------
