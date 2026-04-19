@@ -65,18 +65,15 @@ describe('Anton.connect / getStatus', () => {
     expect(status.parent!.displayName).toBeTruthy();
   });
 
-  it('returns group info after connect', () => {
+  it('returns all groups after connect', () => {
     const status = anton.getStatus();
-    expect(status.group).not.toBeNull();
-    expect(status.group!.groupCode).toBeTruthy();
-    expect(status.group!.groupName).toBeTruthy();
-    expect(status.group!.memberCount).toBeGreaterThan(0);
-  });
-
-  it('returns totalGroups count', () => {
-    const status = anton.getStatus();
-    expect(typeof status.totalGroups).toBe('number');
-    expect(status.totalGroups).toBeGreaterThan(0);
+    expect(Array.isArray(status.groups)).toBe(true);
+    expect(status.groups.length).toBeGreaterThan(0);
+    for (const g of status.groups) {
+      expect(g.groupCode).toBeTruthy();
+      expect(g.groupName).toBeTruthy();
+      expect(g.memberCount).toBeGreaterThan(0);
+    }
   });
 
   it('lists pupil children', () => {
@@ -103,7 +100,7 @@ describe('Anton.connect via logId', () => {
     await antonViaLogId.connect();
     const newStatus = antonViaLogId.getStatus();
     expect(newStatus.parent!.logId).toBe(parent!.logId);
-    expect(newStatus.totalGroups).toBeGreaterThan(0);
+    expect(newStatus.groups.length).toBeGreaterThan(0);
   }, 30_000);
 });
 
@@ -145,7 +142,7 @@ describe('Anton multi-group selection', () => {
   let defaultGroupName: string;
 
   beforeAll(() => {
-    defaultGroupName = anton.getStatus().group!.groupName;
+    defaultGroupName = anton.getStatus().groups[0]!.groupName;
   });
 
   it('getGroup accepts groupName and returns the same group as default', async () => {

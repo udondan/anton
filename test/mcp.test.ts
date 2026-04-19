@@ -138,18 +138,17 @@ describe('MCP tools/list', () => {
 // ---------------------------------------------------------------------------
 
 describe('MCP tools/call get_status', () => {
-  it('returns parent, group, totalGroups, and children', async () => {
+  it('returns parent, groups, and children', async () => {
     const result = (await callTool('get_status')) as {
       parent: { logId: string; displayName: string };
-      group: { groupCode: string };
-      totalGroups: number;
+      groups: { groupCode: string }[];
       children: unknown[];
     };
     expect(result.parent.logId).toBeTruthy();
     expect(result.parent.displayName).toBeTruthy();
-    expect(result.group.groupCode).toBeTruthy();
-    expect(typeof result.totalGroups).toBe('number');
-    expect(result.totalGroups).toBeGreaterThan(0);
+    expect(Array.isArray(result.groups)).toBe(true);
+    expect(result.groups.length).toBeGreaterThan(0);
+    expect(result.groups[0]!.groupCode).toBeTruthy();
     expect(Array.isArray(result.children)).toBe(true);
   });
 });

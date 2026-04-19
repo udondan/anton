@@ -325,17 +325,14 @@ export class Anton {
             loginCode: this.parentSession.loginCode,
           }
         : null,
-      group: defaultGroup
-        ? {
-            groupCode: defaultGroup.groupCode,
-            groupName: defaultGroup.groupName,
-            groupType: defaultGroup.groupType,
-            memberCount: defaultGroup.members.length,
-            isPlus: defaultGroup.isPlus,
-            plusValidUntil: defaultGroup.plusValidUntil,
-          }
-        : null,
-      totalGroups: this.allGroups.length,
+      groups: this.allGroups.map((g) => ({
+        groupCode: g.groupCode,
+        groupName: g.groupName,
+        groupType: g.groupType,
+        memberCount: g.members.length,
+        isPlus: g.isPlus,
+        plusValidUntil: g.plusValidUntil,
+      })),
       children:
         defaultGroup?.members
           .filter((m) => m.role === 'pupil')
