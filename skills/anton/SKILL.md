@@ -16,13 +16,16 @@ description: >
 ## Invocation
 
 ```bash
-# If @udondan/anton is installed globally:
 anton <command> [options]
-
-# Otherwise (no global install needed):
-npx @udondan/anton <command> [options]
-bunx @udondan/anton <command> [options]
 ```
+
+The `anton` CLI should be installed globally for best performance — `npx` adds noticeable latency when running many commands per session:
+
+```bash
+npm install -g @udondan/anton
+```
+
+If the `anton` command is not found, suggest the global install above. As a one-off fallback without installing, `npx @udondan/anton <command>` works but is slower.
 
 All output is JSON printed to stdout — pipe to `jq` to filter or extract fields:
 
@@ -37,7 +40,7 @@ anton weekly Lea | jq '.totalLevels'
 anton progress Lea | jq '.completedLevels[] | select(.puid | startswith("c-mat"))'
 
 # List topic titles with their indices
-anton topics c-mat-4 | jq '.[] | {index: .index, title: .title}'
+anton topics c-mat-4 | jq '.topics[] | {index: .index, title: .title}'
 
 # Get just block titles for a topic
 anton blocks c-mat-4 --topic-index 6 | jq '.blocks[] | .title'
@@ -51,7 +54,7 @@ Set credentials via a config file **or** environment variables — env vars take
 
 ### Config file
 
-Store credentials permanently in `~/.config/anton/config`. The file must not be group/world-accessible (for example, `0600`) — on POSIX systems the CLI will ignore it with a warning if group/world bits are set (`chmod 0600 ~/.config/anton/config`):
+Store credentials permanently in `~/.config/anton/config` (mode `0600`):
 
 ```
 # ~/.config/anton/config
@@ -157,6 +160,8 @@ anton pins --week 2025-06-16
 anton pins --child Lea
 ```
 
+> **Note:** `anton pins` may return `null` for block titles and block puids when querying future weeks. If you need the puid after pinning, use the `blockPuid` from the `pin` command's response directly — don't rely on a follow-up `pins` call to retrieve it.
+
 #### `pin <project>`
 
 Assign a lesson block to the group or a specific child.
@@ -171,6 +176,8 @@ Assign a lesson block to the group or a specific child.
 | `--child <name>`        | Child name to assign to (default: whole group)               |
 
 Identify the block with either `--topic-index` or `--topic-title`, and either `--block-index` or `--block-title`. Get topic/block indices from `anton topics` and `anton blocks`.
+
+> **Warning:** `--block-title` (and `--block-index`) always require a topic selector (`--topic-index` or `--topic-title`). The CLI will error if you omit the topic. Always specify the topic first.
 
 ```bash
 # Assign to whole group by topic index + block index
@@ -545,7 +552,7 @@ Each result contains an `id` field — that is the project ID to use in `topics`
 Topic indices are 0-based positions within a course's topic list. They are not stored anywhere — you derive them at query time:
 
 ```bash
-anton topics c-mat-4 | jq '.[] | {index: .index, title: .title}'
+anton topics c-mat-4 | jq '.topics[] | {index: .index, title: .title}'
 ```
 
 ### Block index
@@ -711,7 +718,7 @@ Once you know the subject and approximate grade level for a child:
 anton plans --subject mat --grade 4
 
 # See all topics — find where the child left off
-anton topics c-mat-4 | jq '.[] | {index: .index, title: .title}'
+anton topics c-mat-4 | jq '.topics[] | {index: .index, title: .title}'
 
 # Check which blocks in that topic the child has already done
 anton completion Lea | jq '.assignments[] | select(.blockPuid | startswith("c-mat-4")) | {block: .blockTitle, rate: .completionRate}'
