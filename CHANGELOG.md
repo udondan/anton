@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/udondan/anton/compare/v1.3.0...v1.4.0) (2026-04-19)
+
+
+### Features
+
+* support global config file at ~/.config/anton/config ([#23](https://github.com/udondan/anton/issues/23)) ([ec8baf4](https://github.com/udondan/anton/commit/ec8baf4bd5a6a6692f573f6eb8bec9e5d7b05e90))
+
 ## [1.3.0](https://github.com/udondan/anton/compare/v1.2.0...v1.3.0) (2026-04-19)
 
 
