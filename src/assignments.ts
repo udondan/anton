@@ -7,7 +7,15 @@
  * ~/.config/anton/assignments.json.
  */
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -43,12 +51,24 @@ function load(): AssignmentStore {
 
 function save(store: AssignmentStore): void {
   const path = storePath();
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(store, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  const dir = dirname(path);
+  mkdirSync(dir, { recursive: true });
+  const tmp = join(dir, `.assignments-${randomUUID()}.tmp`);
   try {
-    chmodSync(path, 0o600);
-  } catch {
-    // Best-effort: chmod may be unsupported on some platforms/filesystems.
+    writeFileSync(tmp, JSON.stringify(store, null, 2), { encoding: 'utf-8', mode: 0o600 });
+    try {
+      chmodSync(tmp, 0o600);
+    } catch {
+      // Best-effort: chmod may be unsupported on some platforms/filesystems.
+    }
+    renameSync(tmp, path);
+  } catch (err) {
+    try {
+      if (existsSync(tmp)) rmSync(tmp);
+    } catch {
+      // ignore cleanup errors
+    }
+    throw err;
   }
 }
 
