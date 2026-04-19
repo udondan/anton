@@ -325,8 +325,8 @@ export function getActivityTimeline(
   childName: string,
   finishEvents: FinishLevelEvent[],
   since: string,
-  asOf: string,
 ): ActivityTimeline {
+  const asOf = new Date().toISOString().slice(0, 10);
   const filtered = finishEvents.filter((e) => e.created.slice(0, 10) >= since);
 
   // Group by date

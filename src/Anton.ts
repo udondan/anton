@@ -436,7 +436,11 @@ export class Anton {
 
       let topic: (typeof topics)[0] | undefined;
       if (opts.topicIndex != null) {
-        if (opts.topicIndex < 0 || opts.topicIndex >= topics.length) {
+        if (
+          !Number.isInteger(opts.topicIndex) ||
+          opts.topicIndex < 0 ||
+          opts.topicIndex >= topics.length
+        ) {
           throw new Error(
             `Topic index ${String(opts.topicIndex)} out of range (0–${String(topics.length - 1)})`,
           );
@@ -453,7 +457,11 @@ export class Anton {
       const blocks = topic.blocks;
       let block: (typeof blocks)[0] | undefined;
       if (opts.blockIndex != null) {
-        if (opts.blockIndex < 0 || opts.blockIndex >= blocks.length) {
+        if (
+          !Number.isInteger(opts.blockIndex) ||
+          opts.blockIndex < 0 ||
+          opts.blockIndex >= blocks.length
+        ) {
           throw new Error(
             `Block index ${String(opts.blockIndex)} out of range (0–${String(blocks.length - 1)})`,
           );
@@ -670,7 +678,11 @@ export class Anton {
 
     let topic: (typeof topics)[0] | undefined;
     if (opts.topicIndex != null) {
-      if (opts.topicIndex < 0 || opts.topicIndex >= topics.length) {
+      if (
+        !Number.isInteger(opts.topicIndex) ||
+        opts.topicIndex < 0 ||
+        opts.topicIndex >= topics.length
+      ) {
         throw new Error(
           `Topic index ${String(opts.topicIndex)} out of range (0–${String(topics.length - 1)})`,
         );
@@ -799,12 +811,7 @@ export class Anton {
     const since = opts.since ?? '1970-01-01';
     const child = this.resolveChild(opts.childName, opts.groupName);
     const finishEvents = await this.getChildEvents(child, since);
-    return getActivityTimeline(
-      child.displayName,
-      finishEvents,
-      since,
-      new Date().toISOString().slice(0, 10),
-    );
+    return getActivityTimeline(child.displayName, finishEvents, since);
   }
 
   /** Side-by-side comparison of all children in a group. */
