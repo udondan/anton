@@ -421,6 +421,34 @@ Claude liest für jedes Kind den bisherigen Verlauf, prüft mit `check_assignmen
 
 ---
 
+## Claude Skill
+
+Für Claude Code steht ein Skill bereit, der Claude beibringt, wie man alle `anton`-CLI-Befehle korrekt verwendet — inklusive Authentifizierung, Befehlssyntax, ID-Ermittlung und wöchentlicher Lernplanung pro Kind.
+
+### Installation
+
+```bash
+npx skills add udondan/anton
+```
+
+Oder global für alle Projekte:
+
+```bash
+npx skills add udondan/anton -g
+```
+
+### Verwendung
+
+Sobald der Skill installiert ist, versteht Claude Anfragen wie:
+
+- „Wie hat sich Emma diese Woche in Mathe geschlagen?"
+- „Weise Emma und Jonas für nächste Woche passende Lektionen zu."
+- „Ich bekomme einen 401-Fehler bei `anton progress` — wie behebe ich das?"
+
+Claude wählt automatisch die richtigen `anton`-Befehle, kennt alle Flags und führt bei Bedarf durch den vollständigen Planungsprozess.
+
+---
+
 ## Lizenz
 
 MIT
