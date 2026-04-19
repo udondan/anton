@@ -4,12 +4,12 @@
   "description": "SDK, CLI, and MCP server for anton.app — track children's learning progress, browse lessons, manage assignments",
   "repository": {
     "type": "git",
-    "url": "https://github.com/udondan/anton"
+    "url": "https://github.com/udondan/anton.git"
   },
   "author": {
     "name": "Daniel Schroeder",
     "email": "deemes79@googlemail.com",
-    "url": "https://github.com/udondan"
+    "url": "https://udondan.com/"
   },
   "keywords": [
     "anton",
