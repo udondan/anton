@@ -50,7 +50,8 @@
     "test:watch": "vitest",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint --fix src/ test/",
-    "format": "prettier --write src/ test/"
+    "format": "prettier --write src/ test/",
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
@@ -64,6 +65,7 @@
     "eslint": "10.2.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.5",
+    "husky": "9.1.7",
     "prettier": "3.8.3",
     "typescript": "6.0.3",
     "typescript-eslint": "8.58.2",

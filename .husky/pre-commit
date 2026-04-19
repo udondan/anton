@@ -1,0 +1,6 @@
+mise run lint
+
+# Anonymize eval files before committing
+if [ -f "scripts/finalize-evals.sh" ]; then
+  scripts/finalize-evals.sh
+fi

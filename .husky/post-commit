@@ -1,0 +1,4 @@
+# Restore real names in eval files after commit
+if [ -f "scripts/prepare-evals.sh" ]; then
+  scripts/prepare-evals.sh
+fi
