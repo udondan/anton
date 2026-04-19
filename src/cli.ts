@@ -29,7 +29,10 @@
  *   anton update-assignment <id> [--status s]             Update a local assignment
  *   anton delete-assignment <id>                          Delete a local assignment
  *
- * Configuration (environment variables):
+ * Configuration:
+ *   ~/.config/anton/config  Optional config file (KEY=VALUE, mode 0600)
+ *
+ * Environment variables (override config file):
  *   ANTON_LOGIN_CODE   Parent 8-character login code (required)
  *   ANTON_LOG_ID       Alternative: parent log ID
  *   ANTON_GROUP        Default group name when parent belongs to multiple groups
@@ -45,6 +48,7 @@ import {
   listAssignments,
   updateAssignment,
 } from './assignments.js';
+import { loadConfigFile } from './config-file.js';
 import { startMcpServer } from './mcp.js';
 import {
   clearCache,
@@ -518,6 +522,8 @@ program
 // ---------------------------------------------------------------------------
 // Run
 // ---------------------------------------------------------------------------
+
+program.hook('preAction', () => loadConfigFile());
 
 program.parseAsync(process.argv).catch((e: unknown) => {
   const msg = (e as Error).message;
