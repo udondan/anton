@@ -168,6 +168,6 @@ The two-layer cache: session is kept until an auth error; groups has a 10-minute
 ## Known limitations
 
 - **No official API** – endpoints can change without notice
-- **Children's publicIds only** – `get_group` returns publicIds, not names. Map them via `get_events`/`finishLevel` or by having child login codes in config.
+- **Group member names may be missing** – `get_group` includes display names and logIds when enrichment succeeds, but some groups may fall back to publicIds only. If needed, map identities via `get_events`/`finishLevel` or by having child login codes in config.
 - **Token lifetime unknown** – restart server if auth fails after a long session
 - **Rate limits unknown** – avoid aggressive polling

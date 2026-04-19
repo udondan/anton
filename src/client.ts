@@ -286,8 +286,8 @@ export function parsePinnedBlocks(events: AntonEvent[]): PinnedBlock[] {
 // Plan / Assign a block to the group log
 // ---------------------------------------------------------------------------
 
-// Serialise concurrent pinGroupBlock calls so each one sees the result of the
-// previous write before fetching existing pins.
+// Serialise concurrent pinGroupBlock calls so writes to the group log are
+// applied in order and do not overlap.
 let _pinMutex: Promise<void> = Promise.resolve();
 
 function withPinMutex<T>(fn: () => Promise<T>): Promise<T> {

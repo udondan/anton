@@ -224,7 +224,11 @@ program
     if (opts.child) {
       const children = anton.listChildren();
       const child = opts.child;
-      const match = children.find((c) => c.displayName?.toLowerCase() === child.toLowerCase());
+      const match = children.find(
+        (c) =>
+          c.displayName?.toLowerCase() === child.toLowerCase() ||
+          c.publicId.toLowerCase() === child.toLowerCase(),
+      );
       if (!match) {
         err(`Child "${opts.child}" not found.`);
         process.exit(1);

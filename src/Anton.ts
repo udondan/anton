@@ -510,15 +510,21 @@ export class Anton {
     const group = this.requireGroup(opts.groupName);
     const groupEvents = await getGroupEvents(group.groupCode);
     const pins = parsePinnedBlocks(groupEvents);
-    const match = pins.find(
+    const matches = pins.filter(
       (p) =>
         p.puid === opts.blockPuid &&
         p.weekStartAt === opts.weekStartAt &&
         (opts.childPublicId == null || p.subgroup === opts.childPublicId),
     );
-    if (!match) {
+    if (matches.length === 0) {
       throw new Error(`No pin found for puid=${opts.blockPuid} week=${opts.weekStartAt}`);
     }
+    if (opts.childPublicId == null && matches.length > 1) {
+      throw new Error(
+        `Multiple pins found for puid=${opts.blockPuid} week=${opts.weekStartAt}; provide childPublicId to disambiguate`,
+      );
+    }
+    const match = matches[0];
     await unpinGroupBlock(group.groupCode, match.created, parent.logId, parent.authToken);
     return {
       unpinned: true,

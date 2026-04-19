@@ -465,7 +465,9 @@ const TOOLS: Tool[] = [
   // ── Local assignments ─────────────────────────────────────────────────────
   {
     name: 'list_assignments',
-    description: 'List local lesson assignments (stored in ~/.config/anton/assignments.json).',
+    description:
+      'List local lesson assignments (stored by default in ~/.config/anton/assignments.json; ' +
+      'override with ANTON_ASSIGNMENTS_FILE).',
     inputSchema: {
       type: 'object',
       properties: {
