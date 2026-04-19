@@ -799,7 +799,12 @@ export class Anton {
     const since = opts.since ?? '1970-01-01';
     const child = this.resolveChild(opts.childName, opts.groupName);
     const finishEvents = await this.getChildEvents(child, since);
-    return getActivityTimeline(child.displayName, finishEvents, since);
+    return getActivityTimeline(
+      child.displayName,
+      finishEvents,
+      since,
+      new Date().toISOString().slice(0, 10),
+    );
   }
 
   /** Side-by-side comparison of all children in a group. */
@@ -818,7 +823,7 @@ export class Anton {
         return { name: child.displayName, finishEvents };
       }),
     );
-    return compareChildren(rows);
+    return compareChildren(rows, new Date().toISOString());
   }
 
   // ---------------------------------------------------------------------------

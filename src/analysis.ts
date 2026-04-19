@@ -45,11 +45,6 @@ function daysBetween(a: string, b: string): number {
   );
 }
 
-/** Get today as YYYY-MM-DD (UTC). */
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 // ---------------------------------------------------------------------------
 // check_assignment_completion
 // ---------------------------------------------------------------------------
@@ -330,6 +325,7 @@ export function getActivityTimeline(
   childName: string,
   finishEvents: FinishLevelEvent[],
   since: string,
+  asOf: string,
 ): ActivityTimeline {
   const filtered = finishEvents.filter((e) => e.created.slice(0, 10) >= since);
 
@@ -370,7 +366,7 @@ export function getActivityTimeline(
   let longestStreak = 0;
   let currentStreak: number;
   let streak = 0;
-  const todayStr = today();
+  const todayStr = asOf;
 
   for (let i = 0; i < sortedDates.length; i++) {
     if (i === 0) {
@@ -429,6 +425,7 @@ export function getActivityTimeline(
  */
 export function compareChildren(
   childRows: { name: string; finishEvents: FinishLevelEvent[] }[],
+  generatedAt: string,
 ): CompareChildrenResult {
   const children: ChildComparisonRow[] = childRows.map(({ name, finishEvents }) => {
     let totalStars = 0;
@@ -466,6 +463,6 @@ export function compareChildren(
 
   return {
     children,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
   };
 }
