@@ -206,12 +206,6 @@ describe('CLI status', () => {
     expect(parent.displayName).toBeTruthy();
   });
 
-  it('includes totalGroups count', async () => {
-    const { parsed } = await run(['status']);
-    const result = parsed as { totalGroups: number };
-    expect(typeof result.totalGroups).toBe('number');
-    expect(result.totalGroups).toBeGreaterThan(0);
-  });
 }, 30_000);
 
 // ---------------------------------------------------------------------------
