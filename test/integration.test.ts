@@ -719,7 +719,7 @@ describe('compare_children', () => {
       }),
     );
 
-    const result = compareChildren(childRows);
+    const result = compareChildren(childRows, new Date().toISOString());
 
     expect(result.children.length).toBe(pupils.length);
     expect(result.generatedAt).toBeTruthy();
@@ -784,7 +784,7 @@ describe('family group code path (getUserEvents / logId)', () => {
         };
       }),
     );
-    const result = compareChildren(childRows);
+    const result = compareChildren(childRows, new Date().toISOString());
     expect(result.children.length).toBe(pupils.length);
     const withData = result.children.find((c) => c.levelsCompleted > 0);
     expect(withData).toBeDefined();
