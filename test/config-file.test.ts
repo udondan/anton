@@ -1,7 +1,7 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { loadConfigFile } from '../src/config-file.js';
 
@@ -75,15 +75,14 @@ describe('loadConfigFile', () => {
   itPosix('refuses to load and warns to stderr when file is group/world-accessible', () => {
     const p = writeTmp('loose.config', 'ANTON_TEST_KEY=x\n', 0o644);
     const written: string[] = [];
-    const orig = process.stderr.write.bind(process.stderr);
-    process.stderr.write = (chunk: unknown) => {
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
       written.push(String(chunk));
       return true;
-    };
+    });
     try {
       loadConfigFile(p);
     } finally {
-      process.stderr.write = orig;
+      spy.mockRestore();
     }
     expect(written.some((l) => l.includes('group/world-accessible'))).toBe(true);
     expect(process.env['ANTON_TEST_KEY']).toBeUndefined();
@@ -92,15 +91,14 @@ describe('loadConfigFile', () => {
   it('warns to stderr and does not throw when path is a directory (EISDIR)', () => {
     // Using a directory path is platform-safe and root-safe (readFileSync always throws EISDIR).
     const written: string[] = [];
-    const orig = process.stderr.write.bind(process.stderr);
-    process.stderr.write = (chunk: unknown) => {
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
       written.push(String(chunk));
       return true;
-    };
+    });
     try {
       loadConfigFile(tmpDir);
     } finally {
-      process.stderr.write = orig;
+      spy.mockRestore();
     }
     expect(
       written.some(

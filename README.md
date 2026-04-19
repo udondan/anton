@@ -61,7 +61,7 @@ ANTON_LOGIN_CODE=DEIN-CODE npx @udondan/anton status
 
 ### Config-Datei (empfohlen)
 
-Credentials können dauerhaft in `~/.config/anton/config` gespeichert werden (Berechtigungen `0600` empfohlen, da die Datei Geheimnisse enthält):
+Credentials können dauerhaft in `~/.config/anton/config` gespeichert werden. Die Datei muss die Berechtigung `0600` haben – auf POSIX-Systemen wird die Datei mit einer Warnung ignoriert, wenn sie für Gruppe oder andere lesbar ist (`chmod 0600 ~/.config/anton/config`):
 
 ```bash
 # ~/.config/anton/config
