@@ -21,12 +21,24 @@ fi
 replace_in_file() {
   local file="$1"
   if [[ -f "$file" ]]; then
-    sed -i.bak \
-      -e "s/[[:<:]]Lea[[:>:]]/${ANTON_CHILD_LEA}/g" \
-      -e "s/[[:<:]]Luke[[:>:]]/${ANTON_CHILD_LUKE}/g" \
-      -e "s/[[:<:]]Skywalker[[:>:]]/${ANTON_SKILL_TEST_GROUP}/g" \
-      "$file"
-    rm -f "${file}.bak"
+    python3 - "$file" "$ANTON_CHILD_LEA" "$ANTON_CHILD_LUKE" "$ANTON_SKILL_TEST_GROUP" <<'PY'
+import pathlib
+import re
+import sys
+
+file_path = pathlib.Path(sys.argv[1])
+lea = sys.argv[2]
+luke = sys.argv[3]
+skywalker = sys.argv[4]
+
+content = file_path.read_text()
+updated = re.sub(r"\bLea\b", lambda _: lea, content)
+updated = re.sub(r"\bLuke\b", lambda _: luke, updated)
+updated = re.sub(r"\bSkywalker\b", lambda _: skywalker, updated)
+
+if updated != content:
+    file_path.write_text(updated)
+PY
     echo "Prepared: $file"
   fi
 }
