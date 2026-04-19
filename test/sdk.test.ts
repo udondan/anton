@@ -141,8 +141,8 @@ describe('Anton.listGroups', () => {
 describe('Anton multi-group selection', () => {
   let defaultGroupName: string;
 
-  beforeAll(() => {
-    defaultGroupName = anton.getStatus().groups[0]!.groupName;
+  beforeAll(async () => {
+    defaultGroupName = (await anton.getGroup()).groupName;
   });
 
   it('getGroup accepts groupName and returns the same group as default', async () => {
