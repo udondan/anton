@@ -425,7 +425,6 @@ export function getActivityTimeline(
  */
 export function compareChildren(
   childRows: { name: string; finishEvents: FinishLevelEvent[] }[],
-  generatedAt = new Date().toISOString(),
 ): CompareChildrenResult {
   const children: ChildComparisonRow[] = childRows.map(({ name, finishEvents }) => {
     let totalStars = 0;
@@ -463,6 +462,6 @@ export function compareChildren(
 
   return {
     children,
-    generatedAt,
+    generatedAt: new Date().toISOString(),
   };
 }
