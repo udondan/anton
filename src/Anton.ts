@@ -823,7 +823,7 @@ export class Anton {
         return { name: child.displayName, finishEvents };
       }),
     );
-    return compareChildren(rows, new Date().toISOString());
+    return compareChildren(rows);
   }
 
   // ---------------------------------------------------------------------------
