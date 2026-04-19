@@ -51,7 +51,7 @@ Set credentials via a config file **or** environment variables — env vars take
 
 ### Config file
 
-Store credentials permanently in `~/.config/anton/config`. The file **must** have mode `0600` — on POSIX systems the CLI will ignore it with a warning if group/world bits are set (`chmod 0600 ~/.config/anton/config`):
+Store credentials permanently in `~/.config/anton/config`. The file must not be group/world-accessible (for example, `0600`) — on POSIX systems the CLI will ignore it with a warning if group/world bits are set (`chmod 0600 ~/.config/anton/config`):
 
 ```
 # ~/.config/anton/config

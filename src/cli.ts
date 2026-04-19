@@ -30,7 +30,7 @@
  *   anton delete-assignment <id>                          Delete a local assignment
  *
  * Configuration:
- *   ~/.config/anton/config  Optional config file (KEY=VALUE, mode 0600)
+ *   ~/.config/anton/config  Optional config file (KEY=VALUE, not group/world-accessible, e.g. 0600)
  *
  * Environment variables (override config file):
  *   ANTON_LOGIN_CODE   Parent 8-character login code (required)
