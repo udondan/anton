@@ -205,7 +205,6 @@ describe('CLI status', () => {
     expect(parent.logId).toBeTruthy();
     expect(parent.displayName).toBeTruthy();
   });
-
 }, 30_000);
 
 // ---------------------------------------------------------------------------
