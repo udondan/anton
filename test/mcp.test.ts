@@ -13,7 +13,9 @@
  *   npm test test/mcp.test.ts
  */
 
-import { resolve } from 'node:path';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -37,6 +39,8 @@ const FAR_FUTURE_WEEK = '2099-06-01';
 let client: Client;
 let transport: StdioClientTransport;
 
+const tmpDir = mkdtempSync(join(tmpdir(), 'anton-mcp-test-'));
+
 beforeAll(async () => {
   if (!process.env['ANTON_LOGIN_CODE']) {
     throw new Error(
@@ -48,7 +52,11 @@ beforeAll(async () => {
   transport = new StdioClientTransport({
     command: 'node',
     args: [CLI, 'mcp'],
-    env: { ...process.env, ANTON_LOGIN_CODE: process.env['ANTON_LOGIN_CODE'] },
+    env: {
+      ...process.env,
+      ANTON_LOGIN_CODE: process.env['ANTON_LOGIN_CODE'],
+      ANTON_ASSIGNMENTS_FILE: join(tmpDir, 'assignments.json'),
+    },
   });
 
   client = new Client({ name: 'anton-test', version: '0.0.1' });
@@ -57,6 +65,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await client?.close();
+  rmSync(tmpDir, { recursive: true, force: true });
 });
 
 // ---------------------------------------------------------------------------

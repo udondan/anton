@@ -37,7 +37,7 @@
  */
 
 import { createRequire } from 'node:module';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { Anton } from './Anton.js';
 import {
   createAssignment,
@@ -456,14 +456,11 @@ program
   .command('assignments')
   .description('List local lesson assignments')
   .option('--child <name>', 'Filter by child name')
-  .option('--status <status>', 'Filter by status: pending, completed, cancelled')
-  .action((opts: { child?: string; status?: string }) => {
-    print(
-      listAssignments({
-        childName: opts.child,
-        status: opts.status as 'pending' | 'completed' | 'cancelled' | undefined,
-      }),
-    );
+  .addOption(
+    new Option('--status <status>', 'Filter by status').choices(['pending', 'completed', 'cancelled']),
+  )
+  .action((opts: { child?: string; status?: 'pending' | 'completed' | 'cancelled' }) => {
+    print(listAssignments({ childName: opts.child, status: opts.status }));
   });
 
 // ── assign ───────────────────────────────────────────────────────────────────
@@ -489,15 +486,12 @@ program
 program
   .command('update-assignment <id>')
   .description('Update a local assignment (status, note)')
-  .option('--status <status>', 'New status: pending, completed, cancelled')
+  .addOption(
+    new Option('--status <status>', 'New status').choices(['pending', 'completed', 'cancelled']),
+  )
   .option('--note <note>', 'Updated note')
-  .action((id: string, opts: { status?: string; note?: string }) => {
-    print(
-      updateAssignment(id, {
-        status: opts.status as 'pending' | 'completed' | 'cancelled' | undefined,
-        note: opts.note,
-      }),
-    );
+  .action((id: string, opts: { status?: 'pending' | 'completed' | 'cancelled'; note?: string }) => {
+    print(updateAssignment(id, { status: opts.status, note: opts.note }));
   });
 
 // ── delete-assignment ─────────────────────────────────────────────────────────

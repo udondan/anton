@@ -53,7 +53,7 @@ The package ships three interfaces over a shared SDK core:
 
 ```text
 src/
-  Anton.ts        — SDK class: all public methods, business logic, no HTTP
+  Anton.ts        — SDK class: all public methods, business logic, no low-level HTTP implementation details
   client.ts       — Low-level HTTP: login, event log, group logger, content API
   analysis.ts     — Pure computation over event arrays (no HTTP, no Anton class)
   assignments.ts  — Local JSON store at ~/.config/anton/assignments.json

@@ -169,6 +169,7 @@ export async function getEvents(
       timeout: REQUEST_TIMEOUT_MS,
     },
   );
+  assertOk(response.data);
   return response.data.events ?? [];
 }
 

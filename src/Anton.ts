@@ -625,7 +625,7 @@ export class Anton {
       .filter((p) => p.guiLanguages.includes(language))
       .filter((p) => {
         if (!subject) return true;
-        const s = typeof p.subject === 'string' ? p.subject : p.subject[language];
+        const s = typeof p.subject === 'string' ? p.subject : (p.subject[language] ?? '');
         return s.toLowerCase().includes(subject);
       })
       .filter((p) => {
@@ -634,8 +634,8 @@ export class Anton {
       })
       .map((p) => ({
         project: p.project,
-        title: typeof p.title === 'string' ? p.title : p.title[language],
-        subject: typeof p.subject === 'string' ? p.subject : p.subject[language],
+        title: typeof p.title === 'string' ? p.title : (p.title[language] ?? p.project),
+        subject: typeof p.subject === 'string' ? p.subject : (p.subject[language] ?? ''),
         grades: p.grades,
         totalBlocks: p.totalBlocks,
         totalLevels: p.totalLevels,

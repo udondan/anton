@@ -45,7 +45,11 @@ function save(store: AssignmentStore): void {
   const path = storePath();
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(store, null, 2), { encoding: 'utf-8', mode: 0o600 });
-  chmodSync(path, 0o600);
+  try {
+    chmodSync(path, 0o600);
+  } catch {
+    // Best-effort: chmod may be unsupported on some platforms/filesystems.
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -87,11 +91,18 @@ export function createAssignment(params: {
   return assignment;
 }
 
+const VALID_STATUSES: AssignmentStatus[] = ['pending', 'completed', 'cancelled'];
+
 /** Update the status of an existing assignment. */
 export function updateAssignment(
   id: string,
   updates: { status?: AssignmentStatus; note?: string; lessonTitle?: string },
 ): Assignment {
+  if (updates.status !== undefined && !VALID_STATUSES.includes(updates.status)) {
+    throw new Error(
+      `Invalid status "${updates.status}". Must be one of: ${VALID_STATUSES.join(', ')}`,
+    );
+  }
   const store = load();
   const idx = store.assignments.findIndex((a) => a.id === id);
   if (idx === -1) throw new Error(`Assignment not found: ${id}`);

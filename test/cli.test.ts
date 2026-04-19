@@ -10,9 +10,11 @@
  */
 
 import { execFile } from 'node:child_process';
-import { resolve } from 'node:path';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
 
@@ -22,9 +24,14 @@ const execFileAsync = promisify(execFile);
 
 const CHILD_NAME = 'Test';
 const CLI = resolve(import.meta.dirname, '../dist/cli.js');
+
+const tmpDir = mkdtempSync(join(tmpdir(), 'anton-cli-test-'));
+afterAll(() => rmSync(tmpDir, { recursive: true, force: true }));
+
 const ENV = {
   ...process.env,
   ANTON_LOGIN_CODE: process.env['ANTON_LOGIN_CODE'] ?? '',
+  ANTON_ASSIGNMENTS_FILE: join(tmpDir, 'assignments.json'),
 };
 
 // ---------------------------------------------------------------------------
