@@ -216,8 +216,9 @@ export function extractPublicId(events: AntonEvent[]): string | undefined {
 }
 
 /**
- * Get the family group code for a user from their event log.
- * Reads the most recent `isGroupMember` event.
+ * Extract all distinct group codes a user belongs to from their event log.
+ * Collects every `isGroupMember` event and returns the codes sorted for
+ * stable ordering when a parent belongs to multiple groups.
  */
 export function extractGroupCodes(events: AntonEvent[]): string[] {
   const codes = new Set<string>();
@@ -542,8 +543,8 @@ export interface ProgressSummary {
   eventCounts: Record<string, number>;
   /** Completed levels with full detail */
   completedLevels: FinishLevelEvent[];
-  /** Stars per subject (from finishLevel events) */
-  starsBySubject: Record<string, number>;
+  /** Stars earned per project prefix (e.g. "c-mat-4"), derived from finishLevel puids */
+  starsByProject: Record<string, number>;
   /** Number of distinct blocks completed */
   distinctBlocksCompleted: number;
 }
@@ -554,7 +555,7 @@ export interface ProgressSummary {
 export function summariseProgress(logId: string, events: AntonEvent[]): ProgressSummary {
   const counts: Record<string, number> = {};
   const completedLevels: FinishLevelEvent[] = [];
-  const starsBySubject: Record<string, number> = {};
+  const starsByProject: Record<string, number> = {};
   const seenLevels = new Map<string, FinishLevelEvent>();
 
   for (const evt of events) {
@@ -573,7 +574,7 @@ export function summariseProgress(logId: string, events: AntonEvent[]): Progress
   for (const fe of seenLevels.values()) {
     completedLevels.push(fe);
     const subject = fe.puid.split('/')[0] ?? 'unknown';
-    starsBySubject[subject] = (starsBySubject[subject] ?? 0) + fe.score;
+    starsByProject[subject] = (starsByProject[subject] ?? 0) + fe.score;
   }
 
   // Sort by created date descending
@@ -584,7 +585,7 @@ export function summariseProgress(logId: string, events: AntonEvent[]): Progress
     totalEvents: events.length,
     eventCounts: counts,
     completedLevels,
-    starsBySubject,
+    starsByProject,
     distinctBlocksCompleted: new Set(completedLevels.map((e) => e.blockPuid)).size,
   };
 }

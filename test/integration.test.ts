@@ -337,7 +337,7 @@ describe('get_progress', () => {
     expect(typeof summary.totalEvents).toBe('number');
     expect(Array.isArray(summary.completedLevels)).toBe(true);
     expect(typeof summary.distinctBlocksCompleted).toBe('number');
-    expect(typeof summary.starsBySubject).toBe('object');
+    expect(typeof summary.starsByProject).toBe('object');
   });
 });
 
