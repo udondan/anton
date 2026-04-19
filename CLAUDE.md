@@ -140,7 +140,7 @@ The two-layer cache: session is kept until an auth error; groups has a 10-minute
 
 | Tool | Description |
 | ---- | ----------- |
-| `get_status` | Auth status, active group info, total group count, configured children |
+| `get_status` | Auth status, all groups the parent belongs to, pupils/children in the selected group |
 | `list_groups` | All groups the parent belongs to, with full member lists |
 | `get_group` | Family group members (publicIds, roles) + current pinned blocks. Optional `group` param. |
 | `get_group_assignments` | Lesson blocks assigned to the group (filterable by child/week). Optional `group` param. |

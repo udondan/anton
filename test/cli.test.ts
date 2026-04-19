@@ -190,11 +190,12 @@ describe('CLI compare', () => {
 
 describe('CLI status', () => {
   requireCredentials();
-  it('returns valid JSON with parent, group, and children', async () => {
+  it('returns valid JSON with parent, groups, and children', async () => {
     const { parsed } = await run(['status']);
-    const result = parsed as { parent: unknown; group: unknown; children: unknown[] };
+    const result = parsed as { parent: unknown; groups: unknown[]; children: unknown[] };
     expect(result.parent).not.toBeNull();
-    expect(result.group).not.toBeNull();
+    expect(Array.isArray(result.groups)).toBe(true);
+    expect(result.groups.length).toBeGreaterThan(0);
     expect(Array.isArray(result.children)).toBe(true);
     expect(result.children.length).toBeGreaterThan(0);
   });
@@ -204,13 +205,6 @@ describe('CLI status', () => {
     const { parent } = parsed as { parent: { logId: string; displayName: string } };
     expect(parent.logId).toBeTruthy();
     expect(parent.displayName).toBeTruthy();
-  });
-
-  it('includes totalGroups count', async () => {
-    const { parsed } = await run(['status']);
-    const result = parsed as { totalGroups: number };
-    expect(typeof result.totalGroups).toBe('number');
-    expect(result.totalGroups).toBeGreaterThan(0);
   });
 }, 30_000);
 
