@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/udondan/anton/compare/v1.4.0...v1.4.1) (2026-04-19)
+
+
+### Bug Fixes
+
+* **skill:** correct jq filter and improve anton skill docs ([#25](https://github.com/udondan/anton/issues/25)) ([5ddbd0e](https://github.com/udondan/anton/commit/5ddbd0e1d0ec39c225a8379fe72ff83adede80e0))
+
 ## [1.4.0](https://github.com/udondan/anton/compare/v1.3.0...v1.4.0) (2026-04-19)
 
 
