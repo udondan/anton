@@ -457,7 +457,11 @@ program
   .description('List local lesson assignments')
   .option('--child <name>', 'Filter by child name')
   .addOption(
-    new Option('--status <status>', 'Filter by status').choices(['pending', 'completed', 'cancelled']),
+    new Option('--status <status>', 'Filter by status').choices([
+      'pending',
+      'completed',
+      'cancelled',
+    ]),
   )
   .action((opts: { child?: string; status?: 'pending' | 'completed' | 'cancelled' }) => {
     print(listAssignments({ childName: opts.child, status: opts.status }));
