@@ -11,6 +11,7 @@
     "email": "deemes79@googlemail.com",
     "url": "https://udondan.com/"
   },
+  "license": "MIT",
   "keywords": [
     "anton",
     "anton.app",
@@ -39,7 +40,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
