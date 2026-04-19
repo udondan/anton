@@ -1,0 +1,53 @@
+{
+  "skill_name": "anton",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to see how Lea did in math this week. What anton CLI commands should I run and what will each one tell me?",
+      "expected_output": "Agent produces correct CLI commands using the real child name: `anton --group Skywalker weekly Lea`, `anton --group Skywalker subjects Lea --subject mat`, and optionally `anton --group Skywalker completion Lea`. All flags must be syntactically correct.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want to assign a math lesson block from the grade-4 math course (c-mat-4) to my whole group for next week (starting 2025-06-23). Walk me through finding the right block and pinning it.",
+      "expected_output": "Agent produces the correct multi-step workflow: `anton topics c-mat-4` to find topic index, `anton blocks c-mat-4 --topic-index <n>` to find block index, then `anton pin c-mat-4 --topic-index <n> --block-index <m> --week 2025-06-23`. Commands must use exact flag names from the skill.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I'm getting a 401 unauthorized error when running `anton progress Lea`. My ANTON_LOGIN_CODE is set. How do I fix this?",
+      "expected_output": "Agent correctly recommends `anton --no-cache progress Lea` to bypass the stale session cache, explains the session cache TTL and when it causes auth errors, with exact flag syntax.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Compare Lea and Luke side by side — who's doing better overall? What commands do I run?",
+      "expected_output": "Agent correctly identifies `anton --group Skywalker compare` as the primary command, optionally supplemented by `anton --group Skywalker subjects Lea` and `anton --group Skywalker subjects Luke` for per-subject detail.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Show me Luke's activity timeline since the start of this year and his current week's summary.",
+      "expected_output": "Agent produces `anton --group Skywalker timeline Luke --since 2026-01-01` and `anton --group Skywalker weekly Luke` with correct flag syntax and date format.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "I want to pin a German lesson for Lea next week but I don't know the project ID or which block to pick. How do I find valid values from scratch?",
+      "expected_output": "Agent uses the skill to produce the correct ID discovery workflow: `anton plans --subject natdeu` to find the project ID, `anton topics <project>` to find topic index, `anton blocks <project> --topic-index <n>` to find block index and level fileIds. Must not invent IDs — must show how to look them up.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "It's Sunday evening and I want to plan next week's lessons for both Lea and Luke individually, based on how they did this week. Walk me through the full process.",
+      "expected_output": "Agent produces the complete per-child planning workflow: gather state with `subjects` and `completion` for each child, apply decision logic (accuracy thresholds, completionRate, trend), look up next blocks with `topics`/`blocks`, pin per child with `--child` flag. Must cover both children separately and explain why per-child pinning is used over group pinning.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "How do I get the fileId for a specific lesson level so I can use `anton lesson` or `anton assign`?",
+      "expected_output": "Agent correctly explains that fileIds live on levels (not blocks), shows `anton blocks <project> --topic-index <n>` with jq to extract level fileIds, and gives a concrete example fileId like `level/c-mat-4/topic-06-.../level-01`.",
+      "files": []
+    }
+  ]
+}
