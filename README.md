@@ -428,13 +428,13 @@ Für Claude Code steht ein Skill bereit, der Claude beibringt, wie man alle `ant
 ### Installation
 
 ```bash
-npx skills add udondan/anton-mcp
+npx skills add udondan/anton
 ```
 
 Oder global für alle Projekte:
 
 ```bash
-npx skills add udondan/anton-mcp -g
+npx skills add udondan/anton -g
 ```
 
 ### Verwendung
