@@ -28,24 +28,22 @@ export function defaultConfigFilePath(): string {
 export function loadConfigFile(path = defaultConfigFilePath()): void {
   if (!existsSync(path)) return;
 
-  if (process.platform !== 'win32') {
-    try {
-      const stat = statSync(path);
-      if (!stat.isFile()) {
-        process.stderr.write(
-          `[anton] Warning: refusing to load config file ${path} because it is not a regular file.\n`,
-        );
-        return;
-      }
-      if (stat.mode & 0o077) {
-        process.stderr.write(
-          `[anton] Warning: refusing to load config file ${path} because it is group/world-accessible (mode ${(stat.mode & 0o777).toString(8)}). Run: chmod 0600 "${path}"\n`,
-        );
-        return;
-      }
-    } catch {
-      // non-fatal — proceed and let the read attempt surface a real error
+  try {
+    const stat = statSync(path);
+    if (!stat.isFile()) {
+      process.stderr.write(
+        `[anton] Warning: refusing to load config file ${path} because it is not a regular file.\n`,
+      );
+      return;
     }
+    if (process.platform !== 'win32' && stat.mode & 0o077) {
+      process.stderr.write(
+        `[anton] Warning: refusing to load config file ${path} because it is group/world-accessible (mode ${(stat.mode & 0o777).toString(8)}). Run: chmod 0600 "${path}"\n`,
+      );
+      return;
+    }
+  } catch {
+    // non-fatal — proceed and let the read attempt surface a real error
   }
 
   let content: string;
