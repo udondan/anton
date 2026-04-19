@@ -14,12 +14,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          PR=$(gh pr list \
+          PRS=$(gh pr list \
             --repo "${{ github.repository }}" \
             --author "release-please[bot]" \
+            --base "${{ github.event.repository.default_branch }}" \
             --state open \
-            --json number \
-            --jq '.[0].number')
+            --json number)
+
+          PR_COUNT=$(printf '%s' "$PRS" | jq 'length')
+
+          if [ "$PR_COUNT" -gt 1 ]; then
+            echo "Expected at most one open release-please PR, found $PR_COUNT"
+            exit 1
+          fi
+
+          PR=$(printf '%s' "$PRS" | jq -r '.[0].number // empty')
 
           if [ -n "$PR" ]; then
             gh pr merge "$PR" --auto --squash --delete-branch \
