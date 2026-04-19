@@ -3,9 +3,27 @@ name: Test
 
 on:
   pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig*.json'
+      - 'eslint.config.js'
+      - 'vitest.config.ts'
+      - '.github/workflows/test.yml'
   push:
     branches:
       - main
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig*.json'
+      - 'eslint.config.js'
+      - 'vitest.config.ts'
+      - '.github/workflows/test.yml'
 
 jobs:
   test:
