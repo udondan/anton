@@ -1,0 +1,9 @@
+mise run lint
+
+# Anonymize eval files before committing
+if [ -f "scripts/finalize-evals.sh" ] && \
+   [ -n "${ANTON_CHILD_LEA:-}" ] && \
+   [ -n "${ANTON_CHILD_LUKE:-}" ] && \
+   [ -n "${ANTON_SKILL_TEST_GROUP:-}" ]; then
+  scripts/finalize-evals.sh
+fi
