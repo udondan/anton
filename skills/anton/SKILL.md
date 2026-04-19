@@ -709,6 +709,6 @@ anton --group "Family A" children
 ## Notes
 
 - **Session cache**: The CLI caches the session at `~/.config/anton/session.json` to skip login on repeat calls. Group info has a 10-minute TTL and is refreshed transparently. Use `--no-cache` if you hit auth errors.
-- **Child names**: Commands accepting `<child>` resolve by display name (case-insensitive). Use `anton children` to see exact names. Child names are distinct from group names — a group may be named "Family" while children inside it are named "Lea" and "Luke". Always quote names containing spaces or special characters (e.g. `"Klasse 5e Victoria<3"`).
+- **Child names**: Commands accepting `<child>` resolve by display name (case-insensitive). Use `anton children` to see exact names. Child names are distinct from group names — a group may be named "Family" while children inside it are named "Lea" and "Luke". Always quote names containing spaces or special characters (e.g. `"Klasse 5e Lea<3"`).
 - **Week dates**: Always a Monday in `YYYY-MM-DD` format. If you're not sure which Monday, use `anton weekly <child>` without `--week` to get the current week.
 - **No official API**: The underlying anton.app API is unofficial and may change without notice. Restart with `--no-cache` if unexpected errors occur after a package update.

@@ -34,8 +34,14 @@ replace_in_file() {
 # Replace in evals
 replace_in_file "${ROOT}/skills/anton/evals/evals.json"
 
-# Replace in any workspace eval metadata that may already exist
-for f in "${ROOT}"/anton-skill-workspace/iteration-*/eval-*/eval_metadata.json; do
+# Replace in all workspace files
+for f in \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/eval-*/eval_metadata.json \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/eval-*/with_skill/outputs/* \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/eval-*/without_skill/outputs/* \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/eval-*/grading.json \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/benchmark.json \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/benchmark.md; do
   replace_in_file "$f"
 done
 

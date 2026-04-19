@@ -41,12 +41,12 @@ replace_in_file "${ROOT}/skills/anton/evals/evals.json"
 
 # Anonymize all workspace output files
 for f in \
-  "${ROOT}"/anton-skill-workspace/iteration-*/eval-*/eval_metadata.json \
-  "${ROOT}"/anton-skill-workspace/iteration-*/eval-*/with_skill/outputs/* \
-  "${ROOT}"/anton-skill-workspace/iteration-*/eval-*/without_skill/outputs/* \
-  "${ROOT}"/anton-skill-workspace/iteration-*/eval-*/grading.json \
-  "${ROOT}"/anton-skill-workspace/iteration-*/benchmark.json \
-  "${ROOT}"/anton-skill-workspace/iteration-*/benchmark.md; do
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/eval-*/eval_metadata.json \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/eval-*/with_skill/outputs/* \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/eval-*/without_skill/outputs/* \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/eval-*/grading.json \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/benchmark.json \
+  "${ROOT}"/skills/anton-skill-workspace/iteration-*/benchmark.md; do
   replace_in_file "$f"
 done
 
