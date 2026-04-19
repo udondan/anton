@@ -41,7 +41,7 @@ const TOOLS: Tool[] = [
     name: 'get_status',
     description:
       'Show authentication and family group status. ' +
-      'Returns parent account info, all groups the parent belongs to, and pupils in the active group.',
+      'Returns parent account info, all groups the parent belongs to, and pupils for the selected/default group.',
     inputSchema: {
       type: 'object',
       properties: { ...groupParam },
