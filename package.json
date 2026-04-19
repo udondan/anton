@@ -6,6 +6,26 @@
     "type": "git",
     "url": "https://github.com/udondan/anton"
   },
+  "author": {
+    "name": "Daniel Schroeder",
+    "email": "deemes79@googlemail.com",
+    "url": "https://github.com/udondan"
+  },
+  "keywords": [
+    "anton",
+    "anton.app",
+    "mcp",
+    "mcp-server",
+    "cli",
+    "sdk",
+    "parental-monitoring",
+    "education",
+    "learning"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/udondan"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
