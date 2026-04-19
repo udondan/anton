@@ -88,8 +88,11 @@ function loadAnton(): Anton {
  * On a cache hit the login + getUserEvents round-trips are skipped. Cached
  * group data is reused while within its TTL; once stale, it is re-fetched
  * from the API without re-logging in.
- * If the cached token turns out to be stale, the cache is cleared and a
- * full login is performed transparently.
+ * When connectFromCache() throws (e.g. group re-fetch failed), the cache is
+ * cleared and a full login is performed. However, when the cache is fully
+ * fresh (zero API calls), an expired auth token is not detected here — it
+ * will surface as an error on the first authenticated API call. Use
+ * --no-cache to force a fresh login if you encounter auth failures.
  */
 async function connectAnton(anton: Anton): Promise<void> {
   const { cache: useCache } = program.opts<{ cache: boolean }>();
@@ -517,6 +520,10 @@ program
 // ---------------------------------------------------------------------------
 
 program.parseAsync(process.argv).catch((e: unknown) => {
-  err((e as Error).message);
+  const msg = (e as Error).message;
+  err(msg);
+  if (/auth|token|unauthorized|401/i.test(msg)) {
+    err('If you are using a cached session, try re-running with --no-cache.');
+  }
   process.exit(1);
 });

@@ -307,6 +307,7 @@ function withPinMutex<T>(fn: () => Promise<T>): Promise<T> {
  * @param blockPuid     Block PUID (e.g. "c-mat-4/ro9ajj")
  * @param blockPath     Block path (e.g. "/../c-mat-4/topic-07-brueche/block-02-brueche-zuordnen/block")
  * @param weekStartAt   ISO date of the Monday of the week (e.g. "2025-02-24")
+ * @param logId         Parent's log ID
  * @param authToken     Parent's auth token
  * @param subgroupPublicId  Optional: restrict to one child by their publicId
  */
