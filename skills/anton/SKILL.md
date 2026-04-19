@@ -47,18 +47,34 @@ anton blocks c-mat-4 --topic-index 6 | jq '.blocks[] | .title'
 
 ## Authentication
 
-Set at least one of these environment variables before running any command:
+Set credentials via a config file **or** environment variables — env vars take precedence.
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `ANTON_LOGIN_CODE` | one of these two | 8-character parent login code |
-| `ANTON_LOG_ID` | one of these two | Alternative: parent log ID (starts with `L-`) |
-| `ANTON_GROUP` | optional | Default group name when parent belongs to multiple groups. Matched case-insensitively. Falls back to the first group when unset. |
-| `ANTON_ASSIGNMENTS_FILE` | optional | Path to local assignments JSON (default: `~/.config/anton/assignments.json`) |
-| `ANTON_NO_SESSION_CACHE` | optional | Set to `1` to always bypass session cache (same as `--no-cache`) |
+### Config file
+
+Store credentials permanently in `~/.config/anton/config`. The file must not be group/world-accessible (for example, `0600`) — on POSIX systems the CLI will ignore it with a warning if group/world bits are set (`chmod 0600 ~/.config/anton/config`):
+
+```
+# ~/.config/anton/config
+ANTON_LOGIN_CODE=ABCD-1234
+ANTON_GROUP=Family
+```
+
+Lines starting with `#` are comments.
+
+### Environment variables
+
+Set at least one of these before running any command:
+
+| Variable                 | Required         | Purpose                                                                                                                          |
+| ------------------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `ANTON_LOGIN_CODE`       | one of these two | 8-character parent login code                                                                                                    |
+| `ANTON_LOG_ID`           | one of these two | Alternative: parent log ID (starts with `L-`)                                                                                    |
+| `ANTON_GROUP`            | optional         | Default group name when parent belongs to multiple groups. Matched case-insensitively. Falls back to the first group when unset. |
+| `ANTON_ASSIGNMENTS_FILE` | optional         | Path to local assignments JSON (default: `~/.config/anton/assignments.json`)                                                     |
+| `ANTON_NO_SESSION_CACHE` | optional         | Set to `1` to always bypass session cache (same as `--no-cache`)                                                                 |
 
 ```bash
-export ANTON_LOGIN_CODE='ABCD1234'
+export ANTON_LOGIN_CODE='ABCD-1234'
 anton status
 ```
 
@@ -70,12 +86,12 @@ If auth fails after a long session or you see `401`/`unauthorized` errors, the c
 
 These apply to every command and must come **before** the subcommand:
 
-| Flag | Description |
-|---|---|
+| Flag             | Description                                                     |
+| ---------------- | --------------------------------------------------------------- |
 | `--group <name>` | Override the active group (takes precedence over `ANTON_GROUP`) |
-| `--no-cache` | Skip the session cache and perform a full login |
-| `--version` | Print the package version |
-| `--help` | Print help |
+| `--no-cache`     | Skip the session cache and perform a full login                 |
+| `--version`      | Print the package version                                       |
+| `--help`         | Print help                                                      |
 
 ```bash
 anton --group "Family B" progress Lea
@@ -91,25 +107,33 @@ anton --no-cache status
 ### Account & Group Info
 
 #### `status`
+
 Show authentication status, all groups the parent belongs to, and children in the active group.
+
 ```bash
 anton status
 ```
 
 #### `groups`
+
 List all groups the parent account belongs to, with their full member lists.
+
 ```bash
 anton groups
 ```
 
 #### `group`
+
 Show family group details and currently pinned blocks.
+
 ```bash
 anton group
 ```
 
 #### `children`
+
 List children in the active group.
+
 ```bash
 anton children
 ```
@@ -119,12 +143,13 @@ anton children
 ### Pinned Assignments
 
 #### `pins`
+
 List lesson blocks currently pinned (assigned) to the group.
 
-| Option | Description |
-|---|---|
-| `--week <date>` | Filter to a specific week start date (`YYYY-MM-DD`, must be a Monday) |
-| `--child <name>` | Filter to a specific child by display name |
+| Option           | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `--week <date>`  | Filter to a specific week start date (`YYYY-MM-DD`, must be a Monday) |
+| `--child <name>` | Filter to a specific child by display name                            |
 
 ```bash
 anton pins
@@ -133,16 +158,17 @@ anton pins --child Lea
 ```
 
 #### `pin <project>`
+
 Assign a lesson block to the group or a specific child.
 
-| Option | Description |
-|---|---|
-| `--topic-index <n>` | Topic index (0-based) — get from `anton topics <project>` |
-| `--topic-title <title>` | Partial topic title match (case-insensitive) |
-| `--block-index <n>` | Block index (0-based) within the topic |
-| `--block-title <title>` | Partial block title match (case-insensitive) |
-| `--week <date>` | Week start date (`YYYY-MM-DD` Monday, default: current week) |
-| `--child <name>` | Child name to assign to (default: whole group) |
+| Option                  | Description                                                  |
+| ----------------------- | ------------------------------------------------------------ |
+| `--topic-index <n>`     | Topic index (0-based) — get from `anton topics <project>`    |
+| `--topic-title <title>` | Partial topic title match (case-insensitive)                 |
+| `--block-index <n>`     | Block index (0-based) within the topic                       |
+| `--block-title <title>` | Partial block title match (case-insensitive)                 |
+| `--week <date>`         | Week start date (`YYYY-MM-DD` Monday, default: current week) |
+| `--child <name>`        | Child name to assign to (default: whole group)               |
 
 Identify the block with either `--topic-index` or `--topic-title`, and either `--block-index` or `--block-title`. Get topic/block indices from `anton topics` and `anton blocks`.
 
@@ -158,10 +184,11 @@ anton pin c-mat-4 --topic-index 6 --block-index 0 --week 2025-06-23
 ```
 
 #### `unpin <blockPuid> <weekStartAt>`
+
 Remove a pinned block. `blockPuid` is the block's puid (e.g. `c-mat-4/ro9ajj`), `weekStartAt` is the Monday date string.
 
-| Option | Description |
-|---|---|
+| Option                  | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
 | `--child-id <publicId>` | Child's publicId to disambiguate when multiple pins exist |
 
 ```bash
@@ -173,13 +200,14 @@ anton unpin c-mat-4/ro9ajj 2025-06-16
 ### Lesson Catalogue
 
 #### `plans`
+
 Browse the Anton lesson catalogue (~285 courses).
 
-| Option | Description |
-|---|---|
-| `-s, --subject <code>` | Filter by subject code (e.g. `mat`, `natdeu`, `eng`) |
-| `-g, --grade <n>` | Filter by grade (1–13) |
-| `-l, --language <lang>` | Filter by language (default: `de`) |
+| Option                  | Description                                          |
+| ----------------------- | ---------------------------------------------------- |
+| `-s, --subject <code>`  | Filter by subject code (e.g. `mat`, `natdeu`, `eng`) |
+| `-g, --grade <n>`       | Filter by grade (1–13)                               |
+| `-l, --language <lang>` | Filter by language (default: `de`)                   |
 
 ```bash
 anton plans
@@ -188,17 +216,20 @@ anton plans -s eng -g 3
 ```
 
 #### `topics <project>`
+
 List topics (chapters) for a course. Use this before `blocks` or `pin` to find the right topic index.
+
 ```bash
 anton topics c-mat-4
 ```
 
 #### `blocks <project>`
+
 List blocks (and their levels) for a single topic within a course.
 
-| Option | Description |
-|---|---|
-| `--topic-index <n>` | Topic index (0-based) |
+| Option                  | Description                                  |
+| ----------------------- | -------------------------------------------- |
+| `--topic-index <n>`     | Topic index (0-based)                        |
 | `--topic-title <title>` | Partial topic title match (case-insensitive) |
 
 ```bash
@@ -207,13 +238,17 @@ anton blocks c-mat-4 --topic-title "Brüche"
 ```
 
 #### `plan <project>`
+
 Full topic → block → level hierarchy for a course. Can be a large response — prefer `topics` + `blocks` for targeted lookups.
+
 ```bash
 anton plan c-mat-4
 ```
 
 #### `lesson <fileId>`
+
 Fetch lesson content (questions, trainers) by file ID.
+
 ```bash
 anton lesson list/plans
 ```
@@ -223,10 +258,11 @@ anton lesson list/plans
 ### Child Progress & Activity
 
 #### `progress <child>`
+
 Learning progress summary for a child — counts, stars, accuracy by subject.
 
-| Option | Description |
-|---|---|
+| Option           | Description                                 |
+| ---------------- | ------------------------------------------- |
 | `--since <date>` | Start date `YYYY-MM-DD` (default: all time) |
 
 ```bash
@@ -235,13 +271,14 @@ anton progress Lea --since 2025-06-01
 ```
 
 #### `events <child>`
+
 Raw event log for a child (e.g. `finishLevel`, `startLevel`).
 
-| Option | Description |
-|---|---|
-| `--since <date>` | Start date `YYYY-MM-DD` |
-| `--type <event>` | Filter to a specific event type (e.g. `finishLevel`) |
-| `-n, --limit <n>` | Max number of events to return (default: 100) |
+| Option            | Description                                          |
+| ----------------- | ---------------------------------------------------- |
+| `--since <date>`  | Start date `YYYY-MM-DD`                              |
+| `--type <event>`  | Filter to a specific event type (e.g. `finishLevel`) |
+| `-n, --limit <n>` | Max number of events to return (default: 100)        |
 
 ```bash
 anton events Lea --type finishLevel -n 20
@@ -249,16 +286,19 @@ anton events Luke --since 2025-06-01
 ```
 
 #### `level-progress <levelPuid> <child>`
+
 Detailed per-level performance for a child via the reviewReport API. `levelPuid` comes from a `finishLevel` event's `puid` field.
+
 ```bash
 anton level-progress c-mat-4/pr7gkb Lea
 ```
 
 #### `weekly <child>`
+
 Weekly activity summary — levels completed, time, stars, assigned vs self-directed ratio.
 
-| Option | Description |
-|---|---|
+| Option          | Description                                                   |
+| --------------- | ------------------------------------------------------------- |
 | `--week <date>` | Week start date — Monday `YYYY-MM-DD` (default: current week) |
 
 ```bash
@@ -267,6 +307,7 @@ anton weekly Lea --week 2025-06-16
 ```
 
 Output shape:
+
 ```json
 {
   "childName": "Lea",
@@ -290,10 +331,11 @@ anton weekly Lea | jq '{levelsCompleted, starsEarned, averageAccuracy, assignmen
 ```
 
 #### `subjects <child>`
+
 Per-subject accuracy, stars, time spent, and improvement trend.
 
-| Option | Description |
-|---|---|
+| Option                 | Description                                     |
+| ---------------------- | ----------------------------------------------- |
 | `-s, --subject <code>` | Filter by subject prefix (e.g. `mat`, `natdeu`) |
 
 ```bash
@@ -302,10 +344,11 @@ anton subjects Lea --subject mat
 ```
 
 #### `timeline <child>`
+
 Active days, streaks, gaps, and daily breakdown for a child.
 
-| Option | Description |
-|---|---|
+| Option           | Description                                 |
+| ---------------- | ------------------------------------------- |
 | `--since <date>` | Start date `YYYY-MM-DD` (default: all time) |
 
 ```bash
@@ -313,10 +356,11 @@ anton timeline Lea --since 2025-05-01
 ```
 
 #### `completion <child>`
+
 Check which assigned lesson blocks a child has completed (levels done vs total).
 
-| Option | Description |
-|---|---|
+| Option          | Description                                   |
+| --------------- | --------------------------------------------- |
 | `--week <date>` | Filter to a specific week `YYYY-MM-DD` Monday |
 
 ```bash
@@ -325,6 +369,7 @@ anton completion Lea --week 2025-06-16
 ```
 
 Output shape:
+
 ```json
 {
   "childName": "Lea",
@@ -338,12 +383,23 @@ Output shape:
       "completedLevels": 4,
       "completionRate": 0.67,
       "levels": [
-        { "puid": "c-mat-4/xyz", "title": "Einführung", "completed": true, "score": 2.7, "lastCompletedAt": "2025-06-17T10:00:00Z" },
+        {
+          "puid": "c-mat-4/xyz",
+          "title": "Einführung",
+          "completed": true,
+          "score": 2.7,
+          "lastCompletedAt": "2025-06-17T10:00:00Z"
+        },
         { "puid": "c-mat-4/uvw", "title": "Test", "completed": false }
       ]
     }
   ],
-  "summary": { "totalAssignments": 3, "fullyCompleted": 1, "partiallyCompleted": 1, "notStarted": 1 }
+  "summary": {
+    "totalAssignments": 3,
+    "fullyCompleted": 1,
+    "partiallyCompleted": 1,
+    "notStarted": 1
+  }
 }
 ```
 
@@ -355,6 +411,7 @@ anton completion Lea | jq '.assignments[] | select(.blockPuid | startswith("c-ma
 ```
 
 #### `compare`
+
 Side-by-side comparison of all children: stars, accuracy, time, subjects.
 
 ```bash
@@ -362,6 +419,7 @@ anton compare
 ```
 
 Output shape:
+
 ```json
 {
   "children": [
@@ -394,11 +452,12 @@ anton compare | jq '.children[] | {name: .childName, levels: .levelsCompleted, a
 These commands manage a local JSON store at `~/.config/anton/assignments.json` (or the path in `ANTON_ASSIGNMENTS_FILE`). They don't require API auth.
 
 #### `assignments`
+
 List local assignments.
 
-| Option | Description |
-|---|---|
-| `--child <name>` | Filter by child name |
+| Option              | Description                                           |
+| ------------------- | ----------------------------------------------------- |
+| `--child <name>`    | Filter by child name                                  |
 | `--status <status>` | Filter by status: `pending`, `completed`, `cancelled` |
 
 ```bash
@@ -407,31 +466,35 @@ anton assignments --child Lea --status pending
 ```
 
 #### `assign <child> <fileId>`
+
 Create a local assignment for a child.
 
-| Option | Description |
-|---|---|
+| Option            | Description                 |
+| ----------------- | --------------------------- |
 | `--title <title>` | Human-readable lesson title |
-| `--note <note>` | Optional note |
+| `--note <note>`   | Optional note               |
 
 ```bash
 anton assign Lea list/plans/c-mat-4/topic-07/block-02 --title "Fractions" --note "Focus on part 2"
 ```
 
 #### `update-assignment <id>`
+
 Update a local assignment.
 
-| Option | Description |
-|---|---|
+| Option              | Description                                     |
+| ------------------- | ----------------------------------------------- |
 | `--status <status>` | New status: `pending`, `completed`, `cancelled` |
-| `--note <note>` | Updated note |
+| `--note <note>`     | Updated note                                    |
 
 ```bash
 anton update-assignment abc-123 --status completed
 ```
 
 #### `delete-assignment <id>`
+
 Delete a local assignment by ID.
+
 ```bash
 anton delete-assignment abc-123
 ```
@@ -442,20 +505,20 @@ anton delete-assignment abc-123
 
 Used with `--subject` in `plans` and `subjects`, and as the prefix of `project` IDs:
 
-| Code | Subject |
-|---|---|
-| `mat` | Mathematics |
+| Code     | Subject                          |
+| -------- | -------------------------------- |
+| `mat`    | Mathematics                      |
 | `natdeu` | German (language arts / Deutsch) |
-| `eng` | English |
-| `sach` | General studies (Sachkunde) |
-| `phy` | Physics |
-| `che` | Chemistry |
-| `bio` | Biology |
-| `geo` | Geography |
-| `his` | History |
-| `inf` | Computer science (Informatik) |
-| `lat` | Latin |
-| `fra` | French |
+| `eng`    | English                          |
+| `sach`   | General studies (Sachkunde)      |
+| `phy`    | Physics                          |
+| `che`    | Chemistry                        |
+| `bio`    | Biology                          |
+| `geo`    | Geography                        |
+| `his`    | History                          |
+| `inf`    | Computer science (Informatik)    |
+| `lat`    | Latin                            |
+| `fra`    | French                           |
 
 Project IDs follow the pattern `c-{subject}-{grade}`, e.g. `c-mat-4` = Mathematics Grade 4, `c-eng-3` = English Grade 3.
 
@@ -534,6 +597,7 @@ Pass this directly to `anton lesson <fileId>` to fetch the lesson content, or to
 ## Typical Workflows
 
 ### Check a child's overall progress
+
 ```bash
 anton progress Lea
 # Or filtered to recent activity:
@@ -541,6 +605,7 @@ anton progress Lea --since 2025-06-01
 ```
 
 ### Check what's happening this week
+
 ```bash
 anton weekly Lea
 anton completion Lea         # which assigned blocks are done?
@@ -550,24 +615,28 @@ anton pins --child Lea       # what's currently assigned?
 ### Find and pin a specific lesson block
 
 1. Browse courses to find the right project:
+
    ```bash
    anton plans --subject mat --grade 4
    # Note the project ID, e.g. c-mat-4
    ```
 
 2. List topics to find topic index:
+
    ```bash
    anton topics c-mat-4
    # Note the index of the topic you want, e.g. index 6 = "Brüche"
    ```
 
 3. List blocks in that topic to find block index:
+
    ```bash
    anton blocks c-mat-4 --topic-index 6
    # Note the block index, e.g. index 1 = "Brüche zuordnen"
    ```
 
 4. Pin the block:
+
    ```bash
    # For the whole group:
    anton pin c-mat-4 --topic-index 6 --block-index 1
@@ -577,11 +646,13 @@ anton pins --child Lea       # what's currently assigned?
    ```
 
 ### Check assignment completion after the week
+
 ```bash
 anton completion Lea --week 2025-06-16
 ```
 
 ### Compare all children
+
 ```bash
 anton compare
 ```
@@ -607,6 +678,7 @@ anton pins --child Luke --week <this-monday>
 ```
 
 Extract the subjects each child has been active in and their accuracy per subject:
+
 ```bash
 anton subjects Lea | jq '.[] | {subject: .subject, accuracy: .accuracy, trend: .trend, stars: .stars}'
 ```
@@ -615,16 +687,17 @@ anton subjects Lea | jq '.[] | {subject: .subject, accuracy: .accuracy, trend: .
 
 Use this decision logic based on `averageAccuracy` across recent sessions in a subject:
 
-| Accuracy | Action |
-|---|---|
-| < 0.65 | Drop one grade level — the current material is too hard |
-| 0.65 – 0.79 | Stay at current grade — consolidate before moving on |
+| Accuracy    | Action                                                        |
+| ----------- | ------------------------------------------------------------- |
+| < 0.65      | Drop one grade level — the current material is too hard       |
+| 0.65 – 0.79 | Stay at current grade — consolidate before moving on          |
 | 0.80 – 0.89 | Stay at current grade or try the next block in the same topic |
-| ≥ 0.90 | Ready to advance — move to next topic or next grade level |
+| ≥ 0.90      | Ready to advance — move to next topic or next grade level     |
 
 The `trend` field reinforces this: an `improving` trend with accuracy 0.75 is a better sign than a `stable` trend at 0.85.
 
 Also check the `completion` output from the previous week:
+
 - `completionRate < 0.5` on a block → child struggled or ran out of time; re-pin it or pin an easier block in the same topic
 - `completionRate = 1` with high scores → ready to move forward
 - Block not started at all → consider whether it was too hard, or just not attempted; re-pin or replace

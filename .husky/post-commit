@@ -1,7 +1,0 @@
-# Restore real names in eval files after commit
-if [ -f "scripts/prepare-evals.sh" ] && \
-   [ -n "${ANTON_CHILD_LEA:-}" ] && \
-   [ -n "${ANTON_CHILD_LUKE:-}" ] && \
-   [ -n "${ANTON_SKILL_TEST_GROUP:-}" ]; then
-  scripts/prepare-evals.sh
-fi

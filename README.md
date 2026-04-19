@@ -5,10 +5,47 @@ Node.js-Paket zur Überwachung des Lernfortschritts von Kindern auf [anton.app](
 - **SDK** — importierbare `Anton`-Klasse für Node.js-Projekte
 - **CLI** — `anton`-Befehl für das Terminal
 - **MCP-Server** — `anton mcp` stellt alle Funktionen als Tools für KI-Assistenten bereit
+- **Agent Skill** — bringt KI-Assistenten alle `anton`-Befehle bei (`npx skills add udondan/anton`)
 
 > **Zweck:** Dieses Paket dient ausschließlich dazu, den Lernfortschritt von Kindern zu verfolgen und Lektionen zu planen — als Unterstützung für Eltern und Erziehungsberechtigte. Es kann **nicht** dazu genutzt werden, beim Lernen zu schummeln oder Lektionen automatisiert abzuschließen. Das Paket stellt dafür keine Funktionen bereit!
 >
 > **Hinweis:** Dieses Paket nutzt eine inoffizielle, durch Reverse Engineering ermittelte API. Endpunkte können sich jederzeit ohne Vorankündigung ändern.
+
+## Inhalt
+
+- [Installation](#installation)
+- [Konfiguration](#konfiguration)
+  - [Config-Datei (empfohlen)](#config-datei-empfohlen)
+  - [Umgebungsvariablen](#umgebungsvariablen)
+- [SDK](#sdk)
+  - [Installation](#installation-1)
+  - [Schnellstart](#schnellstart)
+  - [API-Referenz](#api-referenz)
+    - [Authentifizierung](#authentifizierung)
+    - [Status & Gruppe](#status--gruppe)
+    - [Lektionen zuweisen](#lektionen-zuweisen)
+    - [Fortschritt & Ereignisse](#fortschritt--ereignisse)
+    - [Analysen](#analysen)
+    - [Lernkatalog](#lernkatalog)
+    - [Lokale Aufgaben](#lokale-aufgaben)
+- [CLI](#cli)
+  - [Einstieg](#einstieg)
+  - [Befehle](#befehle)
+    - [Statusbefehle](#statusbefehle)
+    - [Kursbefehle](#kursbefehle)
+    - [Zuweisungsbefehle](#zuweisungsbefehle)
+    - [Fortschritt & Analysen](#fortschritt--analysen)
+    - [Aufgabenverwaltung](#aufgabenverwaltung)
+    - [Globale Optionen](#globale-optionen)
+- [MCP-Server](#mcp-server)
+  - [Einrichtung in Claude Code](#einrichtung-in-claude-code)
+  - [Einrichtung in Claude Desktop](#einrichtung-in-claude-desktop)
+  - [Anwendungsbeispiele mit Claude](#anwendungsbeispiele-mit-claude)
+  - [Verfügbare MCP-Tools](#verfügbare-mcp-tools)
+- [Agent Skill](#agent-skill)
+  - [Installation](#installation-2)
+  - [Verwendung](#verwendung)
+- [Lizenz](#lizenz)
 
 ## Installation
 
@@ -22,6 +59,26 @@ ANTON_LOGIN_CODE=DEIN-CODE npx @udondan/anton status
 
 ## Konfiguration
 
+### Config-Datei (empfohlen)
+
+Credentials können dauerhaft in `~/.config/anton/config` gespeichert werden. Die Datei darf nicht für Gruppe oder andere lesbar sein (z.B. `0600`) – auf POSIX-Systemen wird die Datei mit einer Warnung ignoriert, wenn Gruppe- oder andere-Bits gesetzt sind (`chmod 0600 ~/.config/anton/config`):
+
+```bash
+# ~/.config/anton/config
+ANTON_LOGIN_CODE=DEIN-CODE
+ANTON_GROUP=Family
+```
+
+Die Datei enthält `KEY=VALUE`-Zeilen. Zeilen, die mit `#` beginnen, werden als Kommentar ignoriert. Umgebungsvariablen haben Vorrang vor der Config-Datei.
+
+```bash
+# Datei anlegen und absichern
+touch ~/.config/anton/config
+chmod 0600 ~/.config/anton/config
+```
+
+### Umgebungsvariablen
+
 | Variable                 | Erforderlich             | Beschreibung                                                                |
 | ------------------------ | ------------------------ | --------------------------------------------------------------------------- |
 | `ANTON_LOGIN_CODE`       | Ja (oder `ANTON_LOG_ID`) | Der 8-stellige Eltern-Login-Code aus der Anton-App                          |
@@ -33,6 +90,8 @@ ANTON_LOGIN_CODE=DEIN-CODE npx @udondan/anton status
 ---
 
 ## SDK
+
+> **Agent Skill verfügbar:** `npx skills add udondan/anton` — KI-Assistenten kennen dann alle SDK-Methoden und können beim Aufbau eigener Integrationen helfen.
 
 ### Installation
 
@@ -201,6 +260,8 @@ anton.deleteAssignment(a.id);
 
 ## CLI
 
+> **Agent Skill verfügbar:** `npx skills add udondan/anton` — KI-Assistenten kennen dann alle Befehle, Flags und den vollständigen Planungsprozess und können direkt `anton`-Befehle ausführen.
+
 ### Einstieg
 
 ```bash
@@ -283,6 +344,8 @@ anton --no-cache <befehl>   # Session-Cache überspringen, immer neu anmelden
 ## MCP-Server
 
 Der MCP-Server stellt alle 24 Tools über stdio bereit und ermöglicht KI-Assistenten wie Claude, den Lernfortschritt der Kinder zu analysieren und Lektionen automatisch zuzuweisen.
+
+> **Agent Skill empfohlen:** `npx skills add udondan/anton` — mit dem Skill verstehen KI-Assistenten alle Tool-Parameter, kennen die richtigen Abfragereihenfolgen und können eigenständig Lernpläne erstellen.
 
 ### Einrichtung in Claude Code
 
@@ -421,9 +484,9 @@ Claude liest für jedes Kind den bisherigen Verlauf, prüft mit `check_assignmen
 
 ---
 
-## Claude Skill
+## Agent Skill
 
-Für Claude Code steht ein Skill bereit, der Claude beibringt, wie man alle `anton`-CLI-Befehle korrekt verwendet — inklusive Authentifizierung, Befehlssyntax, ID-Ermittlung und wöchentlicher Lernplanung pro Kind.
+Ein Skill, der KI-Assistenten beibringt, wie man alle `anton`-CLI-Befehle korrekt verwendet — inklusive Authentifizierung, Befehlssyntax, ID-Ermittlung und wöchentlicher Lernplanung pro Kind.
 
 ### Installation
 
@@ -439,13 +502,13 @@ npx skills add udondan/anton -g
 
 ### Verwendung
 
-Sobald der Skill installiert ist, versteht Claude Anfragen wie:
+Sobald der Skill installiert ist, verstehen KI-Assistenten Anfragen wie:
 
 - „Wie hat sich Emma diese Woche in Mathe geschlagen?"
 - „Weise Emma und Jonas für nächste Woche passende Lektionen zu."
 - „Ich bekomme einen 401-Fehler bei `anton progress` — wie behebe ich das?"
 
-Claude wählt automatisch die richtigen `anton`-Befehle, kennt alle Flags und führt bei Bedarf durch den vollständigen Planungsprozess.
+Der Assistent wählt automatisch die richtigen `anton`-Befehle, kennt alle Flags und führt bei Bedarf durch den vollständigen Planungsprozess.
 
 ---
 
