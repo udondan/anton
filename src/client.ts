@@ -269,6 +269,19 @@ export function parseGroupInfo(groupCode: string, events: AntonEvent[]): GroupIn
 }
 
 /**
+ * Resolve the child a pin is restricted to. Older events carry `subgroup`,
+ * newer ones carry `members: ["P-..."]` (empty array = whole group).
+ */
+function pinSubgroup(evt: AntonEvent): string | undefined {
+  if (typeof evt.subgroup === 'string') return evt.subgroup;
+  const members = evt.members;
+  if (Array.isArray(members) && members.length === 1 && typeof members[0] === 'string') {
+    return members[0];
+  }
+  return undefined;
+}
+
+/**
  * Parse pinned blocks (lesson assignments) from the group event log.
  */
 export function parsePinnedBlocks(events: AntonEvent[]): PinnedBlock[] {
@@ -278,7 +291,7 @@ export function parsePinnedBlocks(events: AntonEvent[]): PinnedBlock[] {
       puid: evt.puid as string,
       block: evt.block as string,
       weekStartAt: evt.weekStartAt as string,
-      subgroup: evt.subgroup as string | undefined,
+      subgroup: pinSubgroup(evt),
       created: evt.created,
     }));
 }
@@ -331,7 +344,7 @@ export function pinGroupBlock(
         members: subgroupPublicId ? [subgroupPublicId] : [],
         unselectedLevels: [],
       },
-      path: '/../server-apis-db2/apis/group/pinContentNext/create/query',
+      path: '/../server-apis-db2/apis/group/pinContent/create/query',
       logId,
       deviceLogId: DEVICE_LOG_ID,
       isDebug: false,
@@ -341,7 +354,7 @@ export function pinGroupBlock(
     try {
       const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
       const response = await axios.post<{ status?: string }>(
-        `https://${r}-apis-db.anton.app/?p=group/pinContentNext/create/query`,
+        `https://${r}-apis-db.anton.app/?p=group/pinContent/create/query`,
         body,
         cfg,
       );
@@ -371,7 +384,7 @@ export async function unpinGroupBlock(
   const r = letters[Math.floor(Math.random() * letters.length)];
   const body = {
     params: { groupCode, pinCreatedAt },
-    path: '/../server-apis-db2/apis/group/pinContentNext/delete/query',
+    path: '/../server-apis-db2/apis/group/pinContent/delete/query',
     logId,
     deviceLogId: DEVICE_LOG_ID,
     isDebug: false,
@@ -381,7 +394,7 @@ export async function unpinGroupBlock(
   try {
     const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
     const response = await axios.post<{ status?: string }>(
-      `https://${r}-apis-db.anton.app/?p=group/pinContentNext/delete/query`,
+      `https://${r}-apis-db.anton.app/?p=group/pinContent/delete/query`,
       body,
       cfg,
     );

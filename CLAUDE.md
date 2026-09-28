@@ -91,7 +91,9 @@ The two-layer cache: session is kept until an auth error; groups has a 10-minute
 | --- | --- | --- |
 | `https://d-apis-db.anton.app/?p=login/step1/step1` | POST | Login with code |
 | `https://apis-db-logger-s-lb-2.anton.app/apisLogger/subscribe/` | GET | Read user or group event log |
-| `https://logger-lb-5.anton.app/events` | POST | Write events (e.g. pinGroupBlock) |
+| `https://logger-lb-5.anton.app/events` | POST | Write events |
+| `https://{a-f}-apis-db.anton.app/?p=group/pinContent/create/query` | POST | Pin a block (writes a pinGroupBlock event); formerly `pinContentNext` |
+| `https://{a-f}-apis-db.anton.app/?p=group/pinContent/delete/query` | POST | Unpin by `pinCreatedAt`; formerly `pinContentNext` |
 | `https://content.anton.app/files/?fileId=list/plans` | GET | All 285 courses |
 | `https://content.anton.app/files/?fileId=plan/{project}` | GET | Course topic/block/level tree |
 | `https://content.anton.app/files/?fileId=level/{path}` | GET | Lesson content |
@@ -126,9 +128,12 @@ The two-layer cache: session is kept until an auth error; groups has a 10-minute
   "puid": "c-mat-4/ro9ajj",
   "block": "/../c-mat-4/topic-07-brueche/block-02-brueche-zuordnen/block",
   "subgroup": "P-P7R1oC6TfbGM7LzrEcKROb5SZTvb4PtI",
+  "members": ["P-P7R1oC6TfbGM7LzrEcKROb5SZTvb4PtI"],
   "weekStartAt": "2025-06-16"
 }
 ```
+
+Newer events carry `members` (empty array = whole group); `subgroup` is the legacy field. `parsePinnedBlocks` reads either.
 
 **setGroupMember event** (group log):
 
