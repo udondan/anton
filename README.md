@@ -5,7 +5,8 @@ Node.js-Paket zur Überwachung des Lernfortschritts von Kindern auf [anton.app](
 - **SDK** — importierbare `Anton`-Klasse für Node.js-Projekte
 - **CLI** — `anton`-Befehl für das Terminal
 - **MCP-Server** — `anton mcp` stellt alle Funktionen als Tools für KI-Assistenten bereit
-- **Agent Skill** — bringt KI-Assistenten alle `anton`-Befehle bei (`npx skills add udondan/anton`)
+
+Zusätzlich gibt es einen [Agent Skill](#agent-skill-für-ki-assistenten), der KI-Assistenten die Bedienung der CLI beibringt.
 
 > **Zweck:** Dieses Paket dient ausschließlich dazu, den Lernfortschritt von Kindern zu verfolgen und Lektionen zu planen — als Unterstützung für Eltern und Erziehungsberechtigte. Es kann **nicht** dazu genutzt werden, beim Lernen zu schummeln oder Lektionen automatisiert abzuschließen. Das Paket stellt dafür keine Funktionen bereit!
 >
@@ -37,14 +38,14 @@ Node.js-Paket zur Überwachung des Lernfortschritts von Kindern auf [anton.app](
     - [Fortschritt & Analysen](#fortschritt--analysen)
     - [Aufgabenverwaltung](#aufgabenverwaltung)
     - [Globale Optionen](#globale-optionen)
+  - [Agent Skill für KI-Assistenten](#agent-skill-für-ki-assistenten)
+    - [Skill installieren](#skill-installieren)
+    - [Skill verwenden](#skill-verwenden)
 - [MCP-Server](#mcp-server)
   - [Einrichtung in Claude Code](#einrichtung-in-claude-code)
   - [Einrichtung in Claude Desktop](#einrichtung-in-claude-desktop)
   - [Anwendungsbeispiele mit Claude](#anwendungsbeispiele-mit-claude)
   - [Verfügbare MCP-Tools](#verfügbare-mcp-tools)
-- [Agent Skill](#agent-skill)
-  - [Installation](#installation-2)
-  - [Verwendung](#verwendung)
 - [Lizenz](#lizenz)
 
 ## Installation
@@ -90,8 +91,6 @@ chmod 0600 ~/.config/anton/config
 ---
 
 ## SDK
-
-> **Agent Skill verfügbar:** `npx skills add udondan/anton` — KI-Assistenten kennen dann alle SDK-Methoden und können beim Aufbau eigener Integrationen helfen.
 
 ### Installation
 
@@ -260,7 +259,7 @@ anton.deleteAssignment(a.id);
 
 ## CLI
 
-> **Agent Skill verfügbar:** `npx skills add udondan/anton` — KI-Assistenten kennen dann alle Befehle, Flags und den vollständigen Planungsprozess und können direkt `anton`-Befehle ausführen.
+> **Agent Skill verfügbar:** Mit dem [Agent Skill](#agent-skill-für-ki-assistenten) kennen KI-Assistenten alle Befehle, Flags und den vollständigen Planungsprozess und können direkt `anton`-Befehle ausführen.
 
 ### Einstieg
 
@@ -339,13 +338,39 @@ anton delete-assignment <id>
 anton --no-cache <befehl>   # Session-Cache überspringen, immer neu anmelden
 ```
 
+### Agent Skill für KI-Assistenten
+
+Ein Skill, der KI-Assistenten beibringt, wie man alle `anton`-CLI-Befehle korrekt verwendet — inklusive Authentifizierung, Befehlssyntax, ID-Ermittlung und wöchentlicher Lernplanung pro Kind.
+
+#### Skill installieren
+
+```bash
+npx skills add udondan/anton
+```
+
+Oder global für alle Projekte:
+
+```bash
+npx skills add udondan/anton -g
+```
+
+#### Skill verwenden
+
+Sobald der Skill installiert ist, verstehen KI-Assistenten Anfragen wie:
+
+- „Wie hat sich Emma diese Woche in Mathe geschlagen?"
+- „Weise Emma und Jonas für nächste Woche passende Lektionen zu."
+- „Ich bekomme einen 401-Fehler bei `anton progress` — wie behebe ich das?"
+
+Der Assistent wählt automatisch die richtigen `anton`-Befehle, kennt alle Flags und führt bei Bedarf durch den vollständigen Planungsprozess.
+
 ---
 
 ## MCP-Server
 
 Der MCP-Server stellt alle 24 Tools über stdio bereit und ermöglicht KI-Assistenten wie Claude, den Lernfortschritt der Kinder zu analysieren und Lektionen automatisch zuzuweisen.
 
-> **Agent Skill empfohlen:** `npx skills add udondan/anton` — mit dem Skill verstehen KI-Assistenten alle Tool-Parameter, kennen die richtigen Abfragereihenfolgen und können eigenständig Lernpläne erstellen.
+> **Alternative ohne MCP:** KI-Assistenten mit Terminalzugriff können direkt die CLI nutzen. Der [Agent Skill](#agent-skill-für-ki-assistenten) bringt ihnen die Befehle bei.
 
 ### Einrichtung in Claude Code
 
@@ -481,34 +506,6 @@ Claude liest für jedes Kind den bisherigen Verlauf, prüft mit `check_assignmen
 | `assign_lesson`               | Lokale Aufgabe erstellen                                    |
 | `update_assignment`           | Lokale Aufgabe aktualisieren                                |
 | `delete_assignment`           | Lokale Aufgabe löschen                                      |
-
----
-
-## Agent Skill
-
-Ein Skill, der KI-Assistenten beibringt, wie man alle `anton`-CLI-Befehle korrekt verwendet — inklusive Authentifizierung, Befehlssyntax, ID-Ermittlung und wöchentlicher Lernplanung pro Kind.
-
-### Installation
-
-```bash
-npx skills add udondan/anton
-```
-
-Oder global für alle Projekte:
-
-```bash
-npx skills add udondan/anton -g
-```
-
-### Verwendung
-
-Sobald der Skill installiert ist, verstehen KI-Assistenten Anfragen wie:
-
-- „Wie hat sich Emma diese Woche in Mathe geschlagen?"
-- „Weise Emma und Jonas für nächste Woche passende Lektionen zu."
-- „Ich bekomme einen 401-Fehler bei `anton progress` — wie behebe ich das?"
-
-Der Assistent wählt automatisch die richtigen `anton`-Befehle, kennt alle Flags und führt bei Bedarf durch den vollständigen Planungsprozess.
 
 ---
 
