@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.2](https://github.com/udondan/anton/compare/v1.4.1...v1.4.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @modelcontextprotocol/sdk to v1.30.1 ([#44](https://github.com/udondan/anton/issues/44)) ([d0353fd](https://github.com/udondan/anton/commit/d0353fd45c55da6e2fb8e8aa95d1ec2b4fc9be8e))
+* **deps:** update dependency axios to v1.20.0 ([#45](https://github.com/udondan/anton/issues/45)) ([bec2511](https://github.com/udondan/anton/commit/bec2511ebd8efe5225bdfd2c92fc140fd3838223))
+* **deps:** update dependency commander to v15 ([#46](https://github.com/udondan/anton/issues/46)) ([56e2509](https://github.com/udondan/anton/commit/56e2509fd9d9cfbfce2426962ad3660b2a972f73))
+* use renamed pinContent endpoints for pinning blocks ([#28](https://github.com/udondan/anton/issues/28)) ([314f817](https://github.com/udondan/anton/commit/314f817b7ab15edb80672625ae59ef070bbaf913))
+
 ## [1.4.1](https://github.com/udondan/anton/compare/v1.4.0...v1.4.1) (2026-04-19)
 
 
