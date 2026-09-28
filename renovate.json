@@ -6,5 +6,18 @@
   "minimumReleaseAge": "3 days",
   "automerge": true,
   "automergeType": "pr",
-  "automergeStrategy": "squash"
+  "automergeStrategy": "squash",
+  "packageRules": [
+    {
+      "groupName": "lint tooling",
+      "matchPackageNames": [
+        "eslint",
+        "@eslint/js",
+        "typescript-eslint",
+        "prettier",
+        "eslint-config-prettier",
+        "eslint-plugin-prettier"
+      ]
+    }
+  ]
 }
