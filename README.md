@@ -8,9 +8,11 @@ Node.js-Paket zur Überwachung des Lernfortschritts von Kindern auf [anton.app](
 
 Zusätzlich gibt es einen [Agent Skill](#agent-skill-für-ki-assistenten), der KI-Assistenten die Bedienung der CLI beibringt.
 
-> **Zweck:** Dieses Paket dient ausschließlich dazu, den Lernfortschritt von Kindern zu verfolgen und Lektionen zu planen — als Unterstützung für Eltern und Erziehungsberechtigte. Es kann **nicht** dazu genutzt werden, beim Lernen zu schummeln oder Lektionen automatisiert abzuschließen. Das Paket stellt dafür keine Funktionen bereit!
->
-> **Hinweis:** Dieses Paket nutzt eine inoffizielle, durch Reverse Engineering ermittelte API. Endpunkte können sich jederzeit ohne Vorankündigung ändern.
+> [!IMPORTANT]
+> Dieses Paket dient ausschließlich dazu, den Lernfortschritt von Kindern zu verfolgen und Lektionen zu planen — als Unterstützung für Eltern und Erziehungsberechtigte. Es kann **nicht** dazu genutzt werden, beim Lernen zu schummeln oder Lektionen automatisiert abzuschließen. Das Paket stellt dafür keine Funktionen bereit!
+
+> [!WARNING]
+> Dieses Paket nutzt eine inoffizielle, durch Reverse Engineering ermittelte API. Endpunkte können sich jederzeit ohne Vorankündigung ändern.
 
 ## Inhalt
 
@@ -259,6 +261,7 @@ anton.deleteAssignment(a.id);
 
 ## CLI
 
+> [!TIP]
 > **Agent Skill verfügbar:** Mit dem [Agent Skill](#agent-skill-für-ki-assistenten) kennen KI-Assistenten alle Befehle, Flags und den vollständigen Planungsprozess und können direkt `anton`-Befehle ausführen.
 
 ### Einstieg
@@ -370,6 +373,7 @@ Der Assistent wählt automatisch die richtigen `anton`-Befehle, kennt alle Flags
 
 Der MCP-Server stellt alle 24 Tools über stdio bereit und ermöglicht KI-Assistenten wie Claude, den Lernfortschritt der Kinder zu analysieren und Lektionen automatisch zuzuweisen.
 
+> [!TIP]
 > **Alternative ohne MCP:** KI-Assistenten mit Terminalzugriff können direkt die CLI nutzen. Der [Agent Skill](#agent-skill-für-ki-assistenten) bringt ihnen die Befehle bei.
 
 ### Einrichtung in Claude Code
