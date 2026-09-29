@@ -1,24 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":semanticCommitTypeAll(chore)"],
-  "mode": "full",
-  "semanticCommits": "enabled",
-  "labels": ["renovate"],
-  "minimumReleaseAge": "3 days",
-  "automerge": true,
-  "automergeType": "pr",
-  "automergeStrategy": "squash",
-  "packageRules": [
-    {
-      "groupName": "lint tooling",
-      "matchPackageNames": [
-        "eslint",
-        "@eslint/js",
-        "typescript-eslint",
-        "prettier",
-        "eslint-config-prettier",
-        "eslint-plugin-prettier"
-      ]
-    }
-  ]
+  "extends": ["github>udondan/renovate-config"]
 }
