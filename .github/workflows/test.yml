@@ -10,6 +10,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # All runs share one live anton.app account and pin the same blocks, so
+    # never run two test jobs at the same time.
+    concurrency:
+      group: anton-live-api
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
