@@ -23,6 +23,8 @@ export default defineConfig({
     // Each API call can take a while
     testTimeout: 30_000,
     hookTimeout: 60_000,
+    // Remove pins left behind by earlier failed runs before any test starts.
+    globalSetup: ['test/global-setup.ts'],
     // Run files one at a time; TestSequencer controls the order (CLI last).
     pool: 'forks',
     maxForks: 1,
