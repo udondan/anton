@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.3](https://github.com/udondan/anton/compare/v1.4.2...v1.4.3) (2026-09-30)
+
+
+### Dependencies
+
+* **deps:** update dependency @modelcontextprotocol/sdk to v1.31.0 ([#60](https://github.com/udondan/anton/issues/60)) ([c12529b](https://github.com/udondan/anton/commit/c12529b1ff2751daa1dc4a5f32eb06a60d2c2e42))
+* **deps:** update dependency @types/node to v26.6.3 ([#53](https://github.com/udondan/anton/issues/53)) ([f612c2e](https://github.com/udondan/anton/commit/f612c2e9e00335315e1105acf214ad86b1c18993))
+* **deps:** update dependency typescript-eslint to v8.71.0 ([#61](https://github.com/udondan/anton/issues/61)) ([6fc5103](https://github.com/udondan/anton/commit/6fc5103d7a4841162cda7e6f669f3c78f72b5618))
+* **deps:** update dependency vitest to v5.0.2 ([#54](https://github.com/udondan/anton/issues/54)) ([cab4c00](https://github.com/udondan/anton/commit/cab4c00e714af2dec123ddf6511cd6c3b09ce16c))
+
 ## [1.4.2](https://github.com/udondan/anton/compare/v1.4.1...v1.4.2) (2026-09-28)
 
 
