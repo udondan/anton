@@ -70,3 +70,13 @@ jobs:
         env:
           ANTON_LOGIN_CODE: ${{ secrets.ANTON_LOGIN_CODE }}
           ANTON_GROUP: Test
+
+  # The only test check the ruleset requires, whatever jobs are added later.
+  required:
+    needs: [wait-for-turn, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check result
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
