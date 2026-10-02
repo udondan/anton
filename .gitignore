@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.playwright-mcp
+.env
+.claude
+skills/anton-skill-workspace

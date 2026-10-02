@@ -1,0 +1,74 @@
+{
+  "name": "@udondan/anton",
+  "version": "1.4.2",
+  "description": "SDK, CLI, and MCP server for anton.app — track children's learning progress, browse lessons, manage assignments",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udondan/anton.git"
+  },
+  "author": {
+    "name": "Daniel Schroeder",
+    "email": "deemes79@googlemail.com",
+    "url": "https://udondan.com/"
+  },
+  "license": "MIT",
+  "keywords": [
+    "anton",
+    "anton.app",
+    "mcp",
+    "mcp-server",
+    "cli",
+    "sdk",
+    "parental-monitoring",
+    "education",
+    "learning"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/udondan"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "anton": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js mcp",
+    "pretest": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ test/",
+    "lint:fix": "eslint --fix src/ test/",
+    "format": "prettier --write src/ test/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.31.0",
+    "axios": "1.20.0",
+    "commander": "15.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@modelcontextprotocol/inspector": "2.8.0",
+    "@types/node": "26.6.3",
+    "eslint": "10.11.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-prettier": "5.5.6",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.0.2"
+  }
+}

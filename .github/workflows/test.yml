@@ -1,0 +1,82 @@
+---
+name: Test
+
+on:
+  schedule:
+    - cron: '0 6 * * 5' # Every Friday at 6am UTC, to detect anton.app API changes
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  # All runs share one live anton.app account and pin the same blocks, so only
+  # one run at a time may run the tests. Pull requests from forks don't get the
+  # secrets and don't run the tests.
+  wait-for-turn:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      actions: read
+      contents: write # lock refs under refs/wait-for-turn/
+      pull-requests: read # labels for label-weights
+    # A new commit on the branch cancels the waiting of the outdated run, so the
+    # new run doesn't queue behind it. Once a run has the turn, this job is
+    # done: test jobs that already run are never cancelled.
+    concurrency:
+      group: test-wait-${{ github.head_ref || github.ref }}
+      cancel-in-progress: true
+    steps:
+      # Queue order: manual PRs first, then Renovate updates, then the
+      # release-please PR, which is updated after every merge to main anyway.
+      - name: Wait for turn
+        uses: udondan/wait-for-turn@4a9f5171a1dbc3eb182410c772dae951e8ac26e3 # v1.3.0
+        with:
+          label-weights: |
+            autorelease: pending=-10
+            renovate=-5
+
+  test:
+    needs: wait-for-turn
+    # A skipped job counts as passed for required checks. Run the job even if
+    # wait-for-turn failed and fail it in the first step.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check turn
+        if: needs.wait-for-turn.result == 'failure' || needs.wait-for-turn.result == 'cancelled'
+        run: exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Test
+        if: needs.wait-for-turn.result == 'success'
+        run: bun run test
+        env:
+          ANTON_LOGIN_CODE: ${{ secrets.ANTON_LOGIN_CODE }}
+          ANTON_GROUP: Test
+
+  # The only test check the ruleset requires, whatever jobs are added later.
+  required:
+    needs: [wait-for-turn, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check result
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
