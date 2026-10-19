@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.4.4](https://github.com/udondan/anton/compare/v1.4.3...v1.4.4) (2026-10-19)
+
+
+### Dependencies
+
+* **deps:** lock file maintenance ([#83](https://github.com/udondan/anton/issues/83)) ([787be9e](https://github.com/udondan/anton/commit/787be9ef9f9dfc841290ca806e853d3805a32746))
+* **deps:** pin googleapis/release-please-action action to 45996ed ([#68](https://github.com/udondan/anton/issues/68)) ([29e3bea](https://github.com/udondan/anton/commit/29e3bea75d199efcd9a69a82c8baecdb0f4f61d3))
+* **deps:** update actions/setup-node action to v7.1.0 ([#72](https://github.com/udondan/anton/issues/72)) ([3241b39](https://github.com/udondan/anton/commit/3241b395dbf1c69792360747153b4f7c574bfc23))
+* **deps:** update dependency @modelcontextprotocol/inspector to v2.10.1 ([#73](https://github.com/udondan/anton/issues/73)) ([3987c8e](https://github.com/udondan/anton/commit/3987c8e6c7f0fb968908ad59b3631fe735c2f175))
+* **deps:** update dependency @modelcontextprotocol/inspector to v2.11.0 ([#81](https://github.com/udondan/anton/issues/81)) ([aba991f](https://github.com/udondan/anton/commit/aba991f9b2a1cb7e8abe657ae27b7c1a15e9f36c))
+* **deps:** update dependency @modelcontextprotocol/sdk to v1.32.1 ([#74](https://github.com/udondan/anton/issues/74)) ([864120a](https://github.com/udondan/anton/commit/864120a0fe431f2990ec774427abdf816520de76))
+* **deps:** update dependency @types/node to v26.6.5 ([#69](https://github.com/udondan/anton/issues/69)) ([587b09b](https://github.com/udondan/anton/commit/587b09be38b044461630cf0359771b4710b0f10d))
+* **deps:** update dependency bun to v1.4.3 ([#70](https://github.com/udondan/anton/issues/70)) ([6dbc797](https://github.com/udondan/anton/commit/6dbc7977e8869658482b660dcac4757f772d917c))
+* **deps:** update dependency eslint-plugin-prettier to v5.5.7 ([#80](https://github.com/udondan/anton/issues/80)) ([6af4901](https://github.com/udondan/anton/commit/6af490117654b38775876c7ba1d3d99462d76bcb))
+* **deps:** update dependency typescript-eslint to v8.71.2 ([#79](https://github.com/udondan/anton/issues/79)) ([c0d6c9a](https://github.com/udondan/anton/commit/c0d6c9aadb03383efd966d8ab8d7ed8cd6073bd8))
+* **deps:** update dependency vitest to v5.0.4 ([#78](https://github.com/udondan/anton/issues/78)) ([b426283](https://github.com/udondan/anton/commit/b4262838b0e453bf564dcd4b98bdb15f2aa83326))
+* **deps:** update dependency vitest to v5.0.5 ([#82](https://github.com/udondan/anton/issues/82)) ([19d2a8d](https://github.com/udondan/anton/commit/19d2a8df4cd451932566c44d1da3ecb29ff29432))
+* **deps:** update lint tooling ([#75](https://github.com/udondan/anton/issues/75)) ([182c420](https://github.com/udondan/anton/commit/182c420879efe5882e3fb58ca6b11c9b5b84728e))
+* **deps:** update udondan/wait-for-turn to v1.4.0 ([#77](https://github.com/udondan/anton/issues/77)) ([f4775c3](https://github.com/udondan/anton/commit/f4775c33013e7a89e20071f81bfb8d7a99e88234))
+
 ## [1.4.3](https://github.com/udondan/anton/compare/v1.4.2...v1.4.3) (2026-10-13)
 
 
