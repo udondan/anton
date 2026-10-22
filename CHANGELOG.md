@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.5](https://github.com/udondan/anton/compare/v1.4.4...v1.4.5) (2026-10-22)
+
+
+### Dependencies
+
+* **deps:** update dependency eslint to v10.13.0 ([#84](https://github.com/udondan/anton/issues/84)) ([d7901bd](https://github.com/udondan/anton/commit/d7901bd570dbcf5bbbf415ef2933135c00a1e149))
+* **deps:** update dependency typescript-eslint to v8.72.0 ([#86](https://github.com/udondan/anton/issues/86)) ([2e76f0a](https://github.com/udondan/anton/commit/2e76f0a6178f1892b025d8b8d719799d4c523af1))
+
 ## [1.4.4](https://github.com/udondan/anton/compare/v1.4.3...v1.4.4) (2026-10-19)
 
 
