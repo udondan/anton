@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.5](https://github.com/udondan/anton/compare/v1.4.4...v1.4.5) (2026-10-26)
+
+
+### Dependencies
+
+* **deps:** lock file maintenance ([#89](https://github.com/udondan/anton/issues/89)) ([d8c78e6](https://github.com/udondan/anton/commit/d8c78e6caee8db4fbce7fc130194de941fa28f86))
+* **deps:** update dependency @modelcontextprotocol/inspector to v2.12.0 ([#87](https://github.com/udondan/anton/issues/87)) ([f9e4e5e](https://github.com/udondan/anton/commit/f9e4e5e30a1817a5c390da1a26638f549a8301a0))
+* **deps:** update dependency bun to v1.4.4 ([#88](https://github.com/udondan/anton/issues/88)) ([93ae21f](https://github.com/udondan/anton/commit/93ae21f96dfde7815182ef4c21f339df499d8440))
+* **deps:** update dependency eslint to v10.13.0 ([#84](https://github.com/udondan/anton/issues/84)) ([d7901bd](https://github.com/udondan/anton/commit/d7901bd570dbcf5bbbf415ef2933135c00a1e149))
+* **deps:** update dependency typescript-eslint to v8.72.0 ([#86](https://github.com/udondan/anton/issues/86)) ([2e76f0a](https://github.com/udondan/anton/commit/2e76f0a6178f1892b025d8b8d719799d4c523af1))
+
 ## [1.4.4](https://github.com/udondan/anton/compare/v1.4.3...v1.4.4) (2026-10-19)
 
 
