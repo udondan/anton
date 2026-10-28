@@ -44,6 +44,9 @@ jobs:
     # wait-for-turn failed and fail it in the first step.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Codecov upload via OIDC
     steps:
       - name: Check turn
         if: needs.wait-for-turn.result == 'failure' || needs.wait-for-turn.result == 'cancelled'
@@ -66,10 +69,18 @@ jobs:
 
       - name: Test
         if: needs.wait-for-turn.result == 'success'
-        run: bun run test
+        run: bun run test -- --coverage --coverage.reporter=lcov --coverage.reporter=text
         env:
           ANTON_LOGIN_CODE: ${{ secrets.ANTON_LOGIN_CODE }}
           ANTON_GROUP: Test
+
+      - name: Upload coverage to Codecov
+        if: needs.wait-for-turn.result == 'success'
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          use_oidc: true
+          fail_ci_if_error: false
+          files: coverage/lcov.info
 
   # The only test check the ruleset requires, whatever jobs are added later.
   required:
