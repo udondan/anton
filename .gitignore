@@ -4,3 +4,4 @@ dist/
 .env
 .claude
 skills/anton-skill-workspace
+coverage/
