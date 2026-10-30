@@ -39,7 +39,7 @@ jobs:
       # Queue order: manual PRs first, then Renovate updates, then the
       # release-please PR, which is updated after every merge to main anyway.
       - name: Wait for turn
-        uses: udondan/wait-for-turn@929d8e37d13c53ddf24ad42f11e4dbfef945d436 # v1.4.2
+        uses: udondan/wait-for-turn@bd3964aff95ce510ed9df3bfb4210306c62622dc # v1.5.0
         with:
           label-weights: |
             autorelease: pending=-10
