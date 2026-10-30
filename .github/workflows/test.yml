@@ -78,7 +78,7 @@ jobs:
 
       - name: Test
         if: needs.wait-for-turn.result == 'success'
-        run: bun run test -- --coverage --coverage.reporter=lcov --coverage.reporter=text
+        run: bun run test:coverage
         env:
           ANTON_LOGIN_CODE: ${{ secrets.ANTON_LOGIN_CODE }}
           ANTON_GROUP: Test

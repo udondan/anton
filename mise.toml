@@ -20,8 +20,12 @@ description = "Watch mode — recompile on changes"
 run = "bun run dev"
 
 [tasks.test]
-description = "Run all tests (requires ANTON_LOGIN_CODE)"
+description = "Run all tests (live API tests only with ANTON_LOGIN_CODE)"
 run = "bun run test"
+
+[tasks."test:coverage"]
+description = "Run all tests with coverage (100 % required)"
+run = "bun run test:coverage"
 
 [tasks."test:watch"]
 description = "Run tests in watch mode"

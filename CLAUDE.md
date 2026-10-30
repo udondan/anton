@@ -18,11 +18,18 @@ mise run install           # install dependencies
 mise run build             # tsc → dist/
 mise run dev               # tsc --watch
 mise run test              # run all tests (vitest)
+mise run test:coverage     # run all tests with coverage (100 % required)
 mise run test:watch        # vitest in watch mode
 bun run test test/sdk.test.ts   # run a single test file
 ```
 
-Integration tests hit the real anton.app API and require `ANTON_LOGIN_CODE` to be set:
+The unit tests in `test/unit/` (plus `test/client.test.ts`, `test/config-file.test.ts`) run offline
+with mocked HTTP and must cover every line, branch and function of `src/` on their own — the
+coverage threshold is 100 % and Codecov requires 100 % for project and patch. Every new or changed
+line needs a unit test.
+
+The live tests (`sdk`, `integration`, `mcp`, `cli`) hit the real anton.app API and only run when
+`ANTON_LOGIN_CODE` is set; without it vitest skips them:
 
 ```bash
 ANTON_LOGIN_CODE=YOUR-CODE mise run test
@@ -58,9 +65,12 @@ src/
   analysis.ts     — Pure computation over event arrays (no HTTP, no Anton class)
   assignments.ts  — Local JSON store at ~/.config/anton/assignments.json
   session-cache.ts— CLI-only: session + group info cache at ~/.config/anton/session.json
-  mcp.ts          — MCP server wrapping Anton class as 24 tools over stdio
-  cli.ts          — commander-based CLI; delegates auth to connectAnton() which
-                    reads/writes the session cache before calling Anton.connect()
+  mcp.ts          — MCP server wrapping Anton class as 24 tools; createServer() builds it,
+                    startMcpServer() connects it over stdio
+  program.ts      — commander-based CLI as main(argv) → exit code (runs in-process in tests);
+                    delegates auth to connectAnton() which reads/writes the session cache
+                    before calling Anton.connect()
+  cli.ts          — binary entry point, only calls main() (excluded from coverage)
   types.ts        — All exported TypeScript types
   index.ts        — SDK entry point (re-exports Anton + types)
 ```
@@ -69,7 +79,7 @@ src/
 
 **Multi-group support**: A parent can belong to multiple groups. `connect()` discovers all group codes from `isGroupMember` events and fetches all groups in parallel. The `Anton` class stores `allGroups: GroupInfo[]`. Group selection priority: explicit `groupName` param per method > `AntonConfig.groupName` (set from `ANTON_GROUP` env var by CLI/MCP) > first group (index 0).
 
-**Session cache** lives only in `cli.ts` + `session-cache.ts`. The `Anton` class has two entry points for authentication:
+**Session cache** lives only in `program.ts` + `session-cache.ts`. The `Anton` class has two entry points for authentication:
 
 - `connect()` — full login (SDK, MCP)
 - `connectFromCache(session, groupCodes, groups?)` — zero or N API calls (CLI only)

@@ -1,5 +1,13 @@
 # @udondan/anton
 
+![anton – SDK / CLI / MCP / Agent Skill](docs/banner.webp)
+
+[![npm](https://img.shields.io/npm/v/@udondan/anton)](https://www.npmjs.com/package/@udondan/anton)
+[![Node.js](https://img.shields.io/node/v/@udondan/anton)](https://www.npmjs.com/package/@udondan/anton)
+[![CI](https://github.com/udondan/anton/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/udondan/anton/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/udondan/anton/graph/badge.svg)](https://codecov.io/gh/udondan/anton)
+[![License](https://img.shields.io/github/license/udondan/anton)](LICENSE)
+
 Node.js-Paket zur Überwachung des Lernfortschritts von Kindern auf [anton.app](https://anton.app). Es kapselt die inoffizielle anton.app-API und bietet drei Schnittstellen über einen gemeinsamen Kern:
 
 - **SDK** — importierbare `Anton`-Klasse für Node.js-Projekte

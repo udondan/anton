@@ -9,10 +9,9 @@ coverage:
   status:
     project:
       default:
-        # The coverage of the whole project may drop by up to 1 % against main.
-        target: auto
-        threshold: 1%
+        # The whole project must stay fully tested.
+        target: 100%
     patch:
       default:
-        # At least 80 % of the lines a pull request changes must be tested.
-        target: 80%
+        # Every line a pull request changes must be tested.
+        target: 100%

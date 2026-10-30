@@ -529,7 +529,8 @@ const TOOLS: Tool[] = [
 // Server bootstrap
 // ---------------------------------------------------------------------------
 
-export async function startMcpServer(anton: Anton): Promise<void> {
+/** Build the MCP server with all tools, without connecting a transport. */
+export function createServer(anton: Anton): Server {
   const server = new Server({ name: 'anton', version }, { capabilities: { tools: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: TOOLS }));
@@ -692,6 +693,10 @@ export async function startMcpServer(anton: Anton): Promise<void> {
     }
   });
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  return server;
+}
+
+/** Start the MCP server over stdio. */
+export async function startMcpServer(anton: Anton): Promise<void> {
+  await createServer(anton).connect(new StdioServerTransport());
 }

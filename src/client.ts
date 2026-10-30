@@ -52,7 +52,6 @@ async function defReq<T>(
   serverPath: string,
   params: Record<string, unknown>,
   authToken: string,
-  logId?: string,
 ): Promise<T> {
   const body: Record<string, unknown> = {
     deviceLogId: DEVICE_LOG_ID,
@@ -61,7 +60,6 @@ async function defReq<T>(
     authToken,
     path: serverPath,
     params,
-    ...(logId != null ? { logId } : {}),
   };
 
   const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
@@ -587,7 +585,8 @@ export function summariseProgress(logId: string, events: AntonEvent[]): Progress
 
   for (const fe of seenLevels.values()) {
     completedLevels.push(fe);
-    const subject = fe.puid.split('/')[0] ?? 'unknown';
+    // split() always returns at least one element.
+    const subject = fe.puid.split('/')[0]!;
     starsByProject[subject] = (starsByProject[subject] ?? 0) + fe.score;
   }
 
