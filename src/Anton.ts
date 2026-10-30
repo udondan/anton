@@ -743,7 +743,7 @@ export class Anton {
         title: lv.title,
         puid: lv.puid,
         type: lv.type,
-        ...(lv.path ? { fileId: `level${lv.path.replace('/..', '')}` } : {}),
+        ...(lv.path ? { fileId: `level${lv.path.replace(/^\/\.\./, '')}` } : {}),
       })),
     }));
   }
