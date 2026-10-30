@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.6](https://github.com/udondan/anton/compare/v1.4.5...v1.4.6) (2026-10-30)
+
+
+### Dependencies
+
+* **deps:** update dependency @modelcontextprotocol/sdk to v1.32.2 ([#90](https://github.com/udondan/anton/issues/90)) ([d833dda](https://github.com/udondan/anton/commit/d833dda56da3bce19c083824bd7e3c45bfcac74c))
+* **deps:** update dependency axios to v1.21.0 ([#98](https://github.com/udondan/anton/issues/98)) ([397030f](https://github.com/udondan/anton/commit/397030fea3eff10c9d6a9ceb6b1202263aba2a2e))
+* **deps:** update dependency typescript-eslint to v8.72.1 ([#96](https://github.com/udondan/anton/issues/96)) ([91add40](https://github.com/udondan/anton/commit/91add40a0b3584935b3451f776fa954dcbeaa2a0))
+* **deps:** update jdx/mise-action action to v5 ([#94](https://github.com/udondan/anton/issues/94)) ([9987d3f](https://github.com/udondan/anton/commit/9987d3f473f1ac962babf98b4ee789f7c7697f79))
+* **deps:** update jdx/mise-action action to v5.2.4 ([#99](https://github.com/udondan/anton/issues/99)) ([473ef25](https://github.com/udondan/anton/commit/473ef25d86971ba4c40e6415bac0efe23a2c0066))
+* **deps:** update udondan/wait-for-turn action to v1.4.2 ([#97](https://github.com/udondan/anton/issues/97)) ([9f4565b](https://github.com/udondan/anton/commit/9f4565b602347a7dde434c12743b4aca25db6b8e))
+* **deps:** update udondan/wait-for-turn action to v1.5.0 ([#100](https://github.com/udondan/anton/issues/100)) ([467506a](https://github.com/udondan/anton/commit/467506a02315df62bf149cf93e043b63de6807fc))
+
 ## [1.4.5](https://github.com/udondan/anton/compare/v1.4.4...v1.4.5) (2026-10-26)
 
 
