@@ -18,8 +18,20 @@ class TestSequencer extends BaseSequencer {
   }
 }
 
+// These files test against the live anton.app API and need ANTON_LOGIN_CODE.
+// Without it they are skipped and only the offline unit tests run.
+const LIVE_TESTS = [
+  'test/sdk.test.ts',
+  'test/integration.test.ts',
+  'test/mcp.test.ts',
+  'test/cli.test.ts',
+];
+const live = Boolean(process.env['ANTON_LOGIN_CODE']);
+
 export default defineConfig({
   test: {
+    include: ['test/**/*.test.ts'],
+    exclude: live ? [] : LIVE_TESTS,
     // Each API call can take a while
     testTimeout: 30_000,
     hookTimeout: 60_000,
@@ -30,6 +42,16 @@ export default defineConfig({
     maxForks: 1,
     sequence: {
       sequencer: TestSequencer,
+    },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.ts'],
+      // The binary entry point only calls main() from program.ts.
+      exclude: ['src/cli.ts'],
+      // The unit tests alone must cover everything, as the live tests are
+      // skipped without credentials.
+      thresholds: { 100: true },
     },
   },
 });

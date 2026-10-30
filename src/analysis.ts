@@ -300,7 +300,8 @@ export function getSubjectSummary(
       subjectName: projectToSubjectName(project),
       totalLevelsCompleted: sorted.length,
       averageAccuracy: totalQuestions > 0 ? totalCorrects / totalQuestions : 0,
-      averageStars: sorted.length > 0 ? totalStars / sorted.length : 0,
+      // Every subject has at least one event, so sorted is never empty.
+      averageStars: totalStars / sorted.length,
       totalDurationSeconds: Math.round(totalDuration),
       trend,
       recentSessions: Math.min(sorted.length, trendWindowSize),
@@ -341,15 +342,15 @@ export function getActivityTimeline(
     dayEvents.push(evt);
   }
 
-  const sortedDates = Array.from(byDate.keys()).sort();
+  const sortedDays = Array.from(byDate.entries()).sort(([a], [b]) => a.localeCompare(b));
+  const sortedDates = sortedDays.map(([date]) => date);
   const activeDays = sortedDates.length;
 
   let totalLevels = 0;
   let totalDuration = 0;
   const dailyActivity: DayActivity[] = [];
 
-  for (const date of sortedDates) {
-    const events = byDate.get(date) ?? [];
+  for (const [date, events] of sortedDays) {
     const dayDuration = events.reduce((s, e) => s + e.duration, 0);
     const daySubjects = Array.from(new Set(events.map((e) => e.puid.split('/')[0])));
     totalLevels += events.length;
