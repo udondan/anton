@@ -1,9 +1,41 @@
+import * as fs from 'node:fs';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { loadConfigFile } from '../src/config-file.js';
+import { defaultConfigFilePath, loadConfigFile } from '../src/config-file.js';
+
+// Wrap the fs functions the loader uses, so single tests can make them fail.
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof fs>();
+  return {
+    ...actual,
+    statSync: vi.fn(actual.statSync),
+    readFileSync: vi.fn(actual.readFileSync),
+  };
+});
+
+/** Capture stderr output while running fn. */
+function captureStderr(fn: () => void): string {
+  const written: string[] = [];
+  const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
+    written.push(String(chunk));
+    return true;
+  });
+  try {
+    fn();
+  } finally {
+    spy.mockRestore();
+  }
+  return written.join('');
+}
+
+describe('defaultConfigFilePath', () => {
+  it('points into ~/.config/anton', () => {
+    expect(defaultConfigFilePath()).toBe(join(homedir(), '.config', 'anton', 'config'));
+  });
+});
 
 const tmpDir = mkdtempSync(join(tmpdir(), 'anton-config-test-'));
 afterAll(() => rmSync(tmpDir, { recursive: true, force: true }));
@@ -106,5 +138,52 @@ describe('loadConfigFile', () => {
       ),
     ).toBe(true);
     expect(process.env['ANTON_TEST_KEY']).toBeUndefined();
+  });
+
+  it('ignores lines without a key or with an invalid key', () => {
+    const p = writeTmp('invalid.config', 'no-equals-sign\n=value\nbad-key=x\nANTON_TEST_KEY=ok\n');
+    loadConfigFile(p);
+    expect(process.env['ANTON_TEST_KEY']).toBe('ok');
+    expect(Object.hasOwn(process.env, 'bad-key')).toBe(false);
+  });
+
+  it('still reads the file when stat fails', () => {
+    const p = writeTmp('nostat.config', 'ANTON_TEST_KEY=ok\n');
+    vi.mocked(fs.statSync).mockImplementationOnce(() => {
+      throw new Error('EACCES');
+    });
+    loadConfigFile(p);
+    expect(process.env['ANTON_TEST_KEY']).toBe('ok');
+  });
+
+  it('warns with the reason when the read fails with a non-Error value', () => {
+    const p = writeTmp('noread.config', 'ANTON_TEST_KEY=x\n');
+    vi.mocked(fs.readFileSync).mockImplementationOnce(() => {
+      throw 'boom';
+    });
+    const out = captureStderr(() => loadConfigFile(p));
+    expect(out).toContain(`unable to read config file at ${p}: boom`);
+    expect(process.env['ANTON_TEST_KEY']).toBeUndefined();
+  });
+
+  it('warns with the error message when the read fails', () => {
+    const p = writeTmp('noread2.config', 'ANTON_TEST_KEY=x\n');
+    vi.mocked(fs.readFileSync).mockImplementationOnce(() => {
+      throw new Error('EIO');
+    });
+    const out = captureStderr(() => loadConfigFile(p));
+    expect(out).toContain(`unable to read config file at ${p}: EIO`);
+  });
+
+  it('skips the permission check on Windows', () => {
+    const p = writeTmp('win.config', 'ANTON_TEST_KEY=win\n', 0o644);
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    try {
+      loadConfigFile(p);
+    } finally {
+      Object.defineProperty(process, 'platform', platform);
+    }
+    expect(process.env['ANTON_TEST_KEY']).toBe('win');
   });
 });

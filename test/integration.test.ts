@@ -541,7 +541,7 @@ describe('get_lesson', () => {
           const lv = level as Record<string, unknown>;
           if (typeof lv['path'] === 'string') {
             // path is like "/../c-mat-4/topic-01-.../block-01-.../level-01"
-            fileId = `level${lv['path'].replace('/..', '')}`;
+            fileId = `level${lv['path'].replace(/^\/\.\./, '')}`;
             break outer;
           }
         }
