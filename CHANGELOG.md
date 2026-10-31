@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.7](https://github.com/udondan/anton/compare/v1.4.6...v1.4.7) (2026-10-31)
+
+
+### Dependencies
+
+* **deps:** update udondan/wait-for-turn action to v1.6.0 ([#103](https://github.com/udondan/anton/issues/103)) ([a8d287d](https://github.com/udondan/anton/commit/a8d287df3b39f2313d2606fa0ce943a4ab2be1b0))
+
 ## [1.4.6](https://github.com/udondan/anton/compare/v1.4.5...v1.4.6) (2026-10-30)
 
 
