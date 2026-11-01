@@ -17,7 +17,7 @@ jobs:
   # All runs share one live anton.app account and pin the same blocks, so only
   # one run at a time may run the tests. Pull requests from forks don't get the
   # secrets and don't run the tests.
-  wait-for-turn:
+  priority-boarding:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
@@ -25,21 +25,21 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       actions: read
-      contents: write # lock refs under refs/wait-for-turn/
+      contents: write # lock refs under refs/priority-boarding/
       pull-requests: read # labels for label-weights
       statuses: write # queue position as commit status
     # Queue order, the concurrency group that cancels outdated waiting runs and
     # the rebase of branches that are behind main: see
-    # https://github.com/udondan/wait-for-turn#reusable-workflow
+    # https://github.com/udondan/priority-boarding#reusable-workflow
     # The rebase needs OVERRIDE_TOKEN: pushes with github.token don't start new runs.
-    uses: udondan/wait-for-turn/.github/workflows/wait-for-turn.yml@v1
+    uses: udondan/priority-boarding/.github/workflows/priority-boarding.yml@v1
     secrets:
       update-token: ${{ secrets.OVERRIDE_TOKEN }}
 
   test:
-    needs: wait-for-turn
+    needs: priority-boarding
     # A skipped job counts as passed for required checks. Run the job even if
-    # wait-for-turn failed and fail it in the first step.
+    # priority-boarding failed and fail it in the first step.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
@@ -47,7 +47,7 @@ jobs:
       id-token: write # Codecov upload via OIDC
     steps:
       - name: Check turn
-        if: needs.wait-for-turn.result == 'failure' || needs.wait-for-turn.result == 'cancelled'
+        if: needs.priority-boarding.result == 'failure' || needs.priority-boarding.result == 'cancelled'
         run: exit 1
 
       - uses: actions/checkout@v7
@@ -68,14 +68,14 @@ jobs:
         run: bun run lint
 
       - name: Test
-        if: needs.wait-for-turn.result == 'success'
+        if: needs.priority-boarding.result == 'success'
         run: bun run test:coverage
         env:
           ANTON_LOGIN_CODE: ${{ secrets.ANTON_LOGIN_CODE }}
           ANTON_GROUP: Test
 
       - name: Upload coverage to Codecov
-        if: needs.wait-for-turn.result == 'success'
+        if: needs.priority-boarding.result == 'success'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           use_oidc: true
@@ -89,8 +89,8 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
-    needs: [wait-for-turn, test]
-    if: github.event_name == 'pull_request' && needs.wait-for-turn.result == 'success' && needs.test.result == 'success'
+    needs: [priority-boarding, test]
+    if: github.event_name == 'pull_request' && needs.priority-boarding.result == 'success' && needs.test.result == 'success'
     timeout-minutes: 10
     permissions:
       checks: read
@@ -142,7 +142,7 @@ jobs:
 
   # The only test check the ruleset requires, whatever jobs are added later.
   required:
-    needs: [wait-for-turn, test, coverage, actions]
+    needs: [priority-boarding, test, coverage, actions]
     if: always()
     runs-on: ubuntu-latest
     steps:
