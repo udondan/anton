@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.7](https://github.com/udondan/anton/compare/v1.4.6...v1.4.7) (2026-11-01)
+
+
+### Dependencies
+
+* **deps:** update dependency @modelcontextprotocol/inspector to v2.13.0 ([#109](https://github.com/udondan/anton/issues/109)) ([7729cf3](https://github.com/udondan/anton/commit/7729cf3c98af487daf0c4d695ae258d1e8f4d122))
+* **deps:** update dependency @types/node to v26.6.6 ([#108](https://github.com/udondan/anton/issues/108)) ([2e01f48](https://github.com/udondan/anton/commit/2e01f489e8ae5041bf98b1e306abd1bf3534cc3c))
+* **deps:** update udondan/wait-for-turn action to v1.6.0 ([#103](https://github.com/udondan/anton/issues/103)) ([a8d287d](https://github.com/udondan/anton/commit/a8d287df3b39f2313d2606fa0ce943a4ab2be1b0))
+
 ## [1.4.6](https://github.com/udondan/anton/compare/v1.4.5...v1.4.6) (2026-10-30)
 
 
