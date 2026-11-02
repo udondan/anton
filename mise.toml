@@ -1,0 +1,44 @@
+[tools]
+node = "lts"
+bun = "1.4.4"
+# Linters for the actions job in test.yml, which installs only these.
+actionlint = "1.7.12"
+# The runner's own shellcheck is older and reports differently. actionlint runs it over every `run:` block.
+shellcheck = "0.11.0"
+zizmor = "1.31.1"
+
+[tasks.install]
+description = "Install dependencies"
+run = "bun install"
+
+[tasks.build]
+description = "Compile TypeScript to dist/"
+run = "bun run build"
+
+[tasks.dev]
+description = "Watch mode — recompile on changes"
+run = "bun run dev"
+
+[tasks.test]
+description = "Run all tests (live API tests only with ANTON_LOGIN_CODE)"
+run = "bun run test"
+
+[tasks."test:coverage"]
+description = "Run all tests with coverage (100 % required)"
+run = "bun run test:coverage"
+
+[tasks."test:watch"]
+description = "Run tests in watch mode"
+run = "bun run test:watch"
+
+[tasks.lint]
+description = "Lint src/ and test/"
+run = "bun run lint"
+
+[tasks."lint:fix"]
+description = "Lint and auto-fix src/ and test/"
+run = "bun run lint:fix"
+
+[tasks.format]
+description = "Format src/ and test/ with Prettier"
+run = "bun run format"
