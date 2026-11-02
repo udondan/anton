@@ -15,8 +15,8 @@ permissions: {}
 
 jobs:
   # All runs share one live anton.app account and pin the same blocks, so only
-  # one run at a time may run the tests. Pull requests from forks don't get the
-  # secrets and don't run the tests.
+  # one run at a time may run the live tests. Pull requests from forks don't get
+  # the secrets and skip the wait: they only run the offline unit tests.
   boarding-gate:
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -39,7 +39,8 @@ jobs:
   test:
     needs: boarding-gate
     # A skipped job counts as passed for required checks. Run the job even if
-    # boarding-gate failed and fail it in the first step.
+    # boarding-gate failed and fail it in the first step. For forks the wait
+    # is skipped and ANTON_LOGIN_CODE is empty, so vitest skips the live tests.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
@@ -68,14 +69,13 @@ jobs:
         run: bun run lint
 
       - name: Test
-        if: needs.boarding-gate.result == 'success'
         run: bun run test:coverage
         env:
           ANTON_LOGIN_CODE: ${{ secrets.ANTON_LOGIN_CODE }}
           ANTON_GROUP: Test
 
+      # For forks the action uploads without a token instead of OIDC.
       - name: Upload coverage to Codecov
-        if: needs.boarding-gate.result == 'success'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           use_oidc: true
@@ -84,13 +84,14 @@ jobs:
 
   # Codecov reports its result as the check runs codecov/project and
   # codecov/patch. This job waits for them, so a coverage drop fails the
-  # required job. It is skipped along with the tests, e.g. for pull requests
-  # from forks, and passes with a warning if Codecov doesn't report in time.
+  # required job. It is skipped along with the tests and passes with a warning
+  # if Codecov doesn't report in time.
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
     needs: [boarding-gate, test]
-    if: github.event_name == 'pull_request' && needs.boarding-gate.result == 'success' && needs.test.result == 'success'
+    # !cancelled(): boarding-gate is skipped for forks.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.test.result == 'success' }}
     timeout-minutes: 10
     permissions:
       checks: read
