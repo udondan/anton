@@ -7,6 +7,7 @@
  */
 
 import axios, { type AxiosRequestConfig } from 'axios';
+import { latestPerLevel, projectOf } from './analysis.js';
 import type {
   AntonEvent,
   FinishLevelEvent,
@@ -225,7 +226,7 @@ export function extractGroupCodes(events: AntonEvent[]): string[] {
       codes.add(evt.groupCode);
     }
   }
-  return Array.from(codes).sort();
+  return Array.from(codes).sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -312,100 +313,83 @@ function withPinMutex<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * Post a `pinGroupBlock` event to assign a lesson block to the family group.
- *
- * @param groupCode     Family group code (e.g. "GROUP-XLJ7-CRTE")
- * @param blockPuid     Block PUID (e.g. "c-mat-4/ro9ajj")
- * @param blockPath     Block path (e.g. "/../c-mat-4/topic-07-brueche/block-02-brueche-zuordnen/block")
- * @param weekStartAt   ISO date of the Monday of the week (e.g. "2025-02-24")
- * @param logId         Parent's log ID
- * @param authToken     Parent's auth token
- * @param subgroupPublicId  Optional: restrict to one child by their publicId
+ * Call a group mutation endpoint and turn HTTP failures into a readable error.
+ * API errors in the response body are rethrown unchanged.
  */
-export function pinGroupBlock(
-  groupCode: string,
-  blockPuid: string,
-  blockPath: string,
-  weekStartAt: string,
-  logId: string,
-  authToken: string,
-  subgroupPublicId?: string,
-): Promise<void> {
-  return withPinMutex(async () => {
-    const letters = 'abcdef';
-    const r = letters[Math.floor(Math.random() * letters.length)];
-    const body = {
-      params: {
-        groupCode,
-        pinContent: { type: 'block', puid: blockPuid, path: blockPath },
-        weekStartAt,
-        members: subgroupPublicId ? [subgroupPublicId] : [],
-        unselectedLevels: [],
-      },
-      path: '/../server-apis-db2/apis/group/pinContent/create/query',
-      logId,
-      deviceLogId: DEVICE_LOG_ID,
-      isDebug: false,
-      useAuthToken: true,
-      authToken,
-    };
-    try {
-      const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
-      const response = await axios.post<{ status?: string }>(
-        `https://${r}-apis-db.anton.app/?p=group/pinContent/create/query`,
-        body,
-        cfg,
-      );
-      assertOk(response.data);
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        throw new Error(
-          `pinGroupBlock failed: HTTP ${String(err.response?.status ?? 'unknown')} — ${JSON.stringify(err.response?.data)}`,
-          { cause: err },
-        );
-      }
-      throw err;
-    }
-  });
-}
-
-/**
- * Delete a pinned block from the group by its creation timestamp.
- */
-export async function unpinGroupBlock(
-  groupCode: string,
-  pinCreatedAt: string,
+async function groupMutation(
+  label: string,
+  apiPath: string,
+  params: Record<string, unknown>,
   logId: string,
   authToken: string,
 ): Promise<void> {
-  const letters = 'abcdef';
-  const r = letters[Math.floor(Math.random() * letters.length)];
-  const body = {
-    params: { groupCode, pinCreatedAt },
-    path: '/../server-apis-db2/apis/group/pinContent/delete/query',
-    logId,
-    deviceLogId: DEVICE_LOG_ID,
-    isDebug: false,
-    useAuthToken: true,
-    authToken,
-  };
   try {
-    const cfg: AxiosRequestConfig = { headers: BASE_HEADERS, timeout: REQUEST_TIMEOUT_MS };
-    const response = await axios.post<{ status?: string }>(
-      `https://${r}-apis-db.anton.app/?p=group/pinContent/delete/query`,
-      body,
-      cfg,
-    );
-    assertOk(response.data);
+    await pllsCall(apiPath, params, logId, authToken);
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       throw new Error(
-        `unpinGroupBlock failed: HTTP ${String(err.response?.status ?? 'unknown')} — ${JSON.stringify(err.response?.data)}`,
+        `${label} failed: HTTP ${String(err.response?.status ?? 'unknown')} — ${JSON.stringify(err.response?.data)}`,
         { cause: err },
       );
     }
     throw err;
   }
+}
+
+export interface PinRequest {
+  /** Family group code (e.g. "GROUP-XLJ7-CRTE") */
+  groupCode: string;
+  /** Block PUID (e.g. "c-mat-4/ro9ajj") */
+  blockPuid: string;
+  /** Block path (e.g. "/../c-mat-4/topic-07-brueche/block-02-brueche-zuordnen/block") */
+  blockPath: string;
+  /** ISO date of the Monday of the week (e.g. "2025-02-24") */
+  weekStartAt: string;
+  /** Restrict the pin to one child by their publicId */
+  childPublicId?: string;
+}
+
+/**
+ * Post a `pinGroupBlock` event to assign a lesson block to the family group.
+ *
+ * @param pin        What to pin, and for whom
+ * @param logId      Parent's log ID
+ * @param authToken  Parent's auth token
+ */
+export function pinGroupBlock(pin: PinRequest, logId: string, authToken: string): Promise<void> {
+  return withPinMutex(() =>
+    groupMutation(
+      'pinGroupBlock',
+      'group/pinContent/create/query',
+      {
+        groupCode: pin.groupCode,
+        pinContent: { type: 'block', puid: pin.blockPuid, path: pin.blockPath },
+        weekStartAt: pin.weekStartAt,
+        members: pin.childPublicId ? [pin.childPublicId] : [],
+        unselectedLevels: [],
+      },
+      logId,
+      authToken,
+    ),
+  );
+}
+
+/**
+ * Delete a pinned block from the group by its creation timestamp.
+ */
+export function unpinGroupBlock(
+  groupCode: string,
+  pinCreatedAt: string,
+  logId: string,
+  authToken: string,
+): Promise<void> {
+  return groupMutation(
+    'unpinGroupBlock',
+    'group/pinContent/delete/query',
+    { groupCode, pinCreatedAt },
+    logId,
+    authToken,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -566,28 +550,14 @@ export interface ProgressSummary {
  */
 export function summariseProgress(logId: string, events: AntonEvent[]): ProgressSummary {
   const counts: Record<string, number> = {};
-  const completedLevels: FinishLevelEvent[] = [];
+  for (const evt of events) counts[evt.event] = (counts[evt.event] ?? 0) + 1;
+
+  const finished = events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
+  const completedLevels = [...latestPerLevel(finished).values()];
   const starsByProject: Record<string, number> = {};
-  const seenLevels = new Map<string, FinishLevelEvent>();
-
-  for (const evt of events) {
-    counts[evt.event] = (counts[evt.event] ?? 0) + 1;
-
-    if (evt.event === 'finishLevel') {
-      const fe = evt as FinishLevelEvent;
-      // Keep only the latest run per level puid
-      const prev = seenLevels.get(fe.puid);
-      if (!prev || new Date(fe.created) > new Date(prev.created)) {
-        seenLevels.set(fe.puid, fe);
-      }
-    }
-  }
-
-  for (const fe of seenLevels.values()) {
-    completedLevels.push(fe);
-    // split() always returns at least one element.
-    const subject = fe.puid.split('/')[0]!;
-    starsByProject[subject] = (starsByProject[subject] ?? 0) + fe.score;
+  for (const fe of completedLevels) {
+    const project = projectOf(fe.puid);
+    starsByProject[project] = (starsByProject[project] ?? 0) + fe.score;
   }
 
   // Sort by created date descending

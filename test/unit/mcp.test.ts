@@ -247,6 +247,12 @@ describe('tools/call', () => {
     expect(result.content[0]!.text).toBe('Error: Unknown tool: no_such_tool');
   });
 
+  it('does not treat inherited object properties as tools', async () => {
+    const result = await callTool('constructor', {});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toBe('Error: Unknown tool: constructor');
+  });
+
   it('returns an error result when Anton throws', async () => {
     anton.getGroup.mockRejectedValueOnce(new Error('boom'));
     const result = await callTool('get_group', {});

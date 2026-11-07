@@ -37,6 +37,13 @@ ANTON_LOGIN_CODE=YOUR-CODE mise run test
 
 **Tests expect `dist/` to exist — always `mise run build` first.**
 
+CI also runs qlty (config in `.qlty/qlty.toml`). Both must stay clean; pull requests fail on new code smells:
+
+```bash
+qlty check --all    # plugins: radarlint-js, osv-scanner, trivy, gitleaks, trufflehog
+qlty smells --all   # complexity, duplication, too many parameters
+```
+
 ## Configuration
 
 ```bash
@@ -62,7 +69,10 @@ The package ships three interfaces over a shared SDK core:
 src/
   Anton.ts        — SDK class: all public methods, business logic, no low-level HTTP implementation details
   client.ts       — Low-level HTTP: login, event log, group logger, content API
-  analysis.ts     — Pure computation over event arrays (no HTTP, no Anton class)
+  analysis.ts     — Pure computation over event arrays (no HTTP, no Anton class) and shared helpers
+  activity.ts     — Pure per-subject summary and activity timeline over finishLevel events
+  group-select.ts — Pure group/child selection and pin filtering over the loaded groups
+  plan-lookup.ts  — Pure lookups in plans: topic/block by index or title, block paths, catalogue filter
   assignments.ts  — Local JSON store at ~/.config/anton/assignments.json
   session-cache.ts— CLI-only: session + group info cache at ~/.config/anton/session.json
   mcp.ts          — MCP server wrapping Anton class as 24 tools; createServer() builds it,
@@ -75,7 +85,8 @@ src/
   index.ts        — SDK entry point (re-exports Anton + types)
 ```
 
-**Data flow**: CLI/MCP → `Anton` class → `client.ts` (HTTP) / `analysis.ts` (computation)
+**Data flow**: CLI/MCP → `Anton` class → `client.ts` (HTTP) / pure modules (`analysis.ts`,
+`activity.ts`, `group-select.ts`, `plan-lookup.ts`)
 
 **Multi-group support**: A parent can belong to multiple groups. `connect()` discovers all group codes from `isGroupMember` events and fetches all groups in parallel. The `Anton` class stores `allGroups: GroupInfo[]`. Group selection priority: explicit `groupName` param per method > `AntonConfig.groupName` (set from `ANTON_GROUP` env var by CLI/MCP) > first group (index 0).
 
@@ -90,9 +101,10 @@ The two-layer cache: session is kept until an auth error; groups has a 10-minute
 
 - All `client.ts` functions are standalone exports (not class methods) that take explicit auth parameters.
 - `Anton.ts` orchestrates client calls and is the only place that holds `parentSession` and `groupInfo` state.
-- `analysis.ts` functions are pure — they receive event arrays and return computed results. Do not add HTTP calls there.
+- `analysis.ts`, `activity.ts`, `group-select.ts` and `plan-lookup.ts` are pure — they receive data and return computed results. Do not add HTTP calls there.
 - Assignment IDs are UUIDs generated in `assignments.ts`; the store is a flat JSON array.
-- Block resolution (project → topic → block) is done inline in `Anton.pinBlock()` — there is no separate resolver.
+- Block resolution (project → topic → block) lives in `plan-lookup.ts` (`resolveBlockRef`, `pickByIndexOrTitle`), used by `Anton.pinBlock()` and `Anton.getTopicBlocks()`.
+- MCP tools are dispatched through the handler table `buildToolHandlers()` in `mcp.ts`; a new tool needs an entry in `TOOLS` and in that table.
 - The `blockPath` format is `/../{project}/{topicSlug}/{blockSlug}/block`; it is derived from puids, not stored in the API response directly.
 
 ## Discovered API endpoints

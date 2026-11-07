@@ -24,6 +24,7 @@ import {
   pinGroupBlock,
   summariseProgress,
   unpinGroupBlock,
+  type PinRequest,
 } from '../src/client.js';
 import type { AntonEvent } from '../src/types.js';
 
@@ -341,18 +342,27 @@ describe('parsePinnedBlocks', () => {
 // ---------------------------------------------------------------------------
 
 describe('pinGroupBlock', () => {
+  const pinOf = (blockPuid: string): PinRequest => ({
+    groupCode: 'G',
+    blockPuid,
+    blockPath: 'b',
+    weekStartAt: 'w',
+  });
+
   it('posts a pinContent/create request for a single child', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5); // → "d"
     post.mockResolvedValue(reply({ status: 'ok' }));
 
     await pinGroupBlock(
-      'GROUP-1',
-      'c-mat-4/x',
-      '/../c-mat-4/t/b/block',
-      '2099-01-05',
+      {
+        groupCode: 'GROUP-1',
+        blockPuid: 'c-mat-4/x',
+        blockPath: '/../c-mat-4/t/b/block',
+        weekStartAt: '2099-01-05',
+        childPublicId: 'P-1',
+      },
       'L-1',
       'tok',
-      'P-1',
     );
 
     const [url, body, cfg] = postCall();
@@ -377,55 +387,52 @@ describe('pinGroupBlock', () => {
 
   it('pins for the whole group without a child', async () => {
     post.mockResolvedValue(reply({}));
-    await pinGroupBlock('GROUP-1', 'p', 'b', '2099-01-05', 'L-1', 'tok');
+    await pinGroupBlock(pinOf('p'), 'L-1', 'tok');
     expect(postCall()[1]).toMatchObject({ params: { members: [] } });
     expect(postCall()[0]).toMatch(/^https:\/\/[a-f]-apis-db\.anton\.app\//);
   });
 
   it('wraps HTTP errors with status and response body', async () => {
     post.mockRejectedValue(axiosError(403, { reason: 'forbidden' }));
-    const p = pinGroupBlock('GROUP-1', 'p', 'b', 'w', 'L-1', 'tok');
+    const p = pinGroupBlock(pinOf('p'), 'L-1', 'tok');
     await expect(p).rejects.toThrow('pinGroupBlock failed: HTTP 403 — {"reason":"forbidden"}');
     await expect(p).rejects.toHaveProperty('cause');
   });
 
   it('reports "unknown" status when there is no HTTP response', async () => {
     post.mockRejectedValue(axiosError());
-    await expect(pinGroupBlock('G', 'p', 'b', 'w', 'L', 't')).rejects.toThrow(
+    await expect(pinGroupBlock(pinOf('p'), 'L', 't')).rejects.toThrow(
       'pinGroupBlock failed: HTTP unknown — undefined',
     );
   });
 
   it('rethrows API error responses unchanged', async () => {
     post.mockResolvedValue(reply({ status: 'error', message: 'denied' }));
-    await expect(pinGroupBlock('G', 'p', 'b', 'w', 'L', 't')).rejects.toThrow(
-      'Anton API error: denied',
-    );
+    await expect(pinGroupBlock(pinOf('p'), 'L', 't')).rejects.toThrow('Anton API error: denied');
   });
 
   it('runs concurrent pins one after another, even after a failure', async () => {
     const order: string[] = [];
-    let release!: () => void;
+    // The first request stays open until it is rejected below.
+    let rejectFirst!: (err: Error) => void;
+    const firstRequest = new Promise((_resolve, reject) => {
+      rejectFirst = reject;
+    });
     post
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve, reject) => {
-            order.push('start 1');
-            release = () => {
-              order.push('end 1');
-              reject(new Error('first failed'));
-            };
-          }),
-      )
+      .mockImplementationOnce(() => {
+        order.push('start 1');
+        return firstRequest;
+      })
       .mockImplementationOnce(() => {
         order.push('start 2');
         return Promise.resolve(reply({}));
       });
 
-    const first = pinGroupBlock('G', 'p1', 'b', 'w', 'L', 't');
-    const second = pinGroupBlock('G', 'p2', 'b', 'w', 'L', 't');
+    const first = pinGroupBlock(pinOf('p1'), 'L', 't');
+    const second = pinGroupBlock(pinOf('p2'), 'L', 't');
     await vi.waitFor(() => expect(order).toEqual(['start 1']));
-    release();
+    order.push('end 1');
+    rejectFirst(new Error('first failed'));
 
     await expect(first).rejects.toThrow('first failed');
     await expect(second).resolves.toBeUndefined();
