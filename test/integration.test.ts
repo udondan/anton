@@ -32,13 +32,8 @@ import {
   summariseProgress,
   unpinGroupBlock,
 } from '../src/client.js';
-import {
-  checkAssignmentCompletion,
-  compareChildren,
-  getActivityTimeline,
-  getSubjectSummary,
-  getWeeklySummary,
-} from '../src/analysis.js';
+import { getActivityTimeline, getSubjectSummary } from '../src/activity.js';
+import { checkAssignmentCompletion, compareChildren, getWeeklySummary } from '../src/analysis.js';
 import {
   createAssignment,
   deleteAssignment,
@@ -284,13 +279,15 @@ describe('pin_block and unpin_block', () => {
 
     // Pin for Test child in a far-future week
     await pinGroupBlock(
-      groupInfo.groupCode,
-      blockPuid,
-      blockPath,
-      FAR_FUTURE_WEEK,
+      {
+        groupCode: groupInfo.groupCode,
+        blockPuid,
+        blockPath,
+        weekStartAt: FAR_FUTURE_WEEK,
+        childPublicId: testChildPublicId,
+      },
       parentSession.logId,
       parentSession.authToken,
-      testChildPublicId,
     );
 
     // Verify the pin appears in the group log
@@ -534,19 +531,12 @@ describe('get_lesson', () => {
     const plan = await getPlan('c-mat-4');
 
     // Find the first level that has a path property (used to build the fileId)
-    let fileId: string | undefined;
-    outer: for (const topic of plan.topics) {
-      for (const block of topic.blocks) {
-        for (const level of block.levels) {
-          const lv = level as Record<string, unknown>;
-          if (typeof lv['path'] === 'string') {
-            // path is like "/../c-mat-4/topic-01-.../block-01-.../level-01"
-            fileId = `level${lv['path'].replace(/^\/\.\./, '')}`;
-            break outer;
-          }
-        }
-      }
-    }
+    // path is like "/../c-mat-4/topic-01-.../block-01-.../level-01"
+    const levelPath = plan.topics
+      .flatMap((topic) => topic.blocks.flatMap((block) => block.levels))
+      .map((level) => level['path'])
+      .find((path): path is string => typeof path === 'string');
+    let fileId = levelPath && `level${levelPath.replace(/^\/\.\./, '')}`;
 
     if (!fileId) {
       // Fallback: construct from puids (may not always work with the API)
@@ -581,8 +571,7 @@ describe('check_assignment_completion', () => {
       pinnedBlocks,
       planCache,
       testFinishEvents,
-      undefined,
-      testChildPublicId,
+      { publicId: testChildPublicId },
     );
 
     expect(result.childName).toBe(CHILD_NAME);

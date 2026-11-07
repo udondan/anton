@@ -4,11 +4,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getActivityTimeline, getSubjectSummary } from '../../src/activity.js';
 import {
   checkAssignmentCompletion,
   compareChildren,
-  getActivityTimeline,
-  getSubjectSummary,
   getWeeklySummary,
 } from '../../src/analysis.js';
 import type { FinishLevelEvent, PinnedBlock, Plan } from '../../src/types.js';
@@ -186,14 +185,17 @@ describe('checkAssignmentCompletion', () => {
       pin({ puid: 'c-mat-4/other' }), // group-wide
       pin({ puid: 'c-mat-4/b1', weekStartAt: '2099-01-12' }),
     ];
-    const byChild = checkAssignmentCompletion('Kid', pins, planCache, [], undefined, 'P-kid');
+    const byChild = checkAssignmentCompletion('Kid', pins, planCache, [], { publicId: 'P-kid' });
     expect(byChild.assignments.map((a) => a.blockPuid)).toEqual([
       'c-mat-4/b1',
       'c-mat-4/other',
       'c-mat-4/b1',
     ]);
 
-    const byWeek = checkAssignmentCompletion('Kid', pins, planCache, [], '2099-01-12', 'P-kid');
+    const byWeek = checkAssignmentCompletion('Kid', pins, planCache, [], {
+      week: '2099-01-12',
+      publicId: 'P-kid',
+    });
     expect(byWeek.week).toBe('2099-01-12');
     expect(byWeek.assignments).toHaveLength(1);
     expect(byWeek.assignments[0]?.weekStartAt).toBe('2099-01-12');

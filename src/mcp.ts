@@ -6,7 +6,7 @@
  */
 
 import { createRequire } from 'node:module';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
@@ -526,162 +526,144 @@ const TOOLS: Tool[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Tool handlers
+// ---------------------------------------------------------------------------
+
+type Args = Record<string, unknown>;
+type ToolHandler = (args: Args, groupName: string | undefined) => unknown;
+type AssignmentStatusArg = 'pending' | 'completed' | 'cancelled' | undefined;
+
+const str = (args: Args, key: string) => args[key] as string;
+const optStr = (args: Args, key: string) => args[key] as string | undefined;
+const optNum = (args: Args, key: string) => args[key] as number | undefined;
+
+/** Map every tool name to the Anton method it calls. */
+export function buildToolHandlers(anton: Anton): Record<string, ToolHandler> {
+  return {
+    get_status: (_, groupName) => anton.getStatus({ groupName }),
+    list_groups: () => anton.listGroups(),
+    get_group: (_, groupName) => anton.getGroup({ groupName }),
+    get_group_assignments: (args, groupName) =>
+      anton.getGroupAssignments({
+        childPublicId: optStr(args, 'childPublicId'),
+        week: optStr(args, 'week'),
+        groupName,
+      }),
+    pin_block: (args, groupName) =>
+      anton.pinBlock({ ...(args as Parameters<typeof anton.pinBlock>[0]), groupName }),
+    unpin_block: (args, groupName) =>
+      anton.unpinBlock({
+        blockPuid: str(args, 'blockPuid'),
+        weekStartAt: str(args, 'weekStartAt'),
+        childPublicId: optStr(args, 'childPublicId'),
+        groupName,
+      }),
+    get_progress: (args, groupName) =>
+      anton.getProgress({
+        childName: str(args, 'childName'),
+        since: optStr(args, 'since'),
+        groupName,
+      }),
+    get_events: (args, groupName) =>
+      anton.getEvents({
+        childName: str(args, 'childName'),
+        since: optStr(args, 'since'),
+        eventType: optStr(args, 'eventType'),
+        limit: optNum(args, 'limit'),
+        groupName,
+      }),
+    get_level_progress: (args, groupName) =>
+      anton.getLevelProgress({
+        levelPuid: str(args, 'levelPuid'),
+        childName: optStr(args, 'childName'),
+        childPublicId: optStr(args, 'childPublicId'),
+        groupName,
+      }),
+    list_children: (_, groupName) => anton.listChildren({ groupName }),
+    list_plans: (args) =>
+      anton.listPlans({
+        subject: optStr(args, 'subject'),
+        grade: optNum(args, 'grade'),
+        language: optStr(args, 'language'),
+      }),
+    list_topics: (args) => anton.listTopics({ project: str(args, 'project') }),
+    get_topic_blocks: (args) =>
+      anton.getTopicBlocks({
+        project: str(args, 'project'),
+        topicIndex: optNum(args, 'topicIndex'),
+        topicTitle: optStr(args, 'topicTitle'),
+      }),
+    get_plan: (args) => anton.getPlan({ project: str(args, 'project') }),
+    get_lesson: (args) => anton.getLesson({ fileId: str(args, 'fileId') }),
+    check_assignment_completion: (args, groupName) =>
+      anton.checkAssignmentCompletion({
+        childName: str(args, 'childName'),
+        week: optStr(args, 'week'),
+        groupName,
+      }),
+    get_weekly_summary: (args, groupName) =>
+      anton.getWeeklySummary({
+        childName: str(args, 'childName'),
+        weekStartAt: optStr(args, 'weekStartAt'),
+        groupName,
+      }),
+    get_subject_summary: (args, groupName) =>
+      anton.getSubjectSummary({
+        childName: str(args, 'childName'),
+        subject: optStr(args, 'subject'),
+        groupName,
+      }),
+    get_activity_timeline: (args, groupName) =>
+      anton.getActivityTimeline({
+        childName: str(args, 'childName'),
+        since: optStr(args, 'since'),
+        groupName,
+      }),
+    compare_children: (_, groupName) => anton.compareChildren({ groupName }),
+    list_assignments: (args) =>
+      anton.listAssignments({
+        childName: optStr(args, 'childName'),
+        status: args['status'] as AssignmentStatusArg,
+      }),
+    assign_lesson: (args) =>
+      anton.assignLesson({
+        childName: str(args, 'childName'),
+        fileId: str(args, 'fileId'),
+        lessonTitle: optStr(args, 'lessonTitle'),
+        note: optStr(args, 'note'),
+      }),
+    update_assignment: (args) =>
+      anton.updateAssignment(str(args, 'id'), {
+        status: args['status'] as AssignmentStatusArg,
+        note: optStr(args, 'note'),
+      }),
+    delete_assignment: (args) => {
+      anton.deleteAssignment(str(args, 'id'));
+      return { deleted: true, id: args['id'] };
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Server bootstrap
 // ---------------------------------------------------------------------------
 
 /** Build the MCP server with all tools, without connecting a transport. */
-export function createServer(anton: Anton): Server {
-  const server = new Server({ name: 'anton', version }, { capabilities: { tools: {} } });
+export function createServer(anton: Anton): McpServer {
+  const mcp = new McpServer({ name: 'anton', version }, { capabilities: { tools: {} } });
+  const handlers = buildToolHandlers(anton);
 
-  server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: TOOLS }));
+  // The tools are declared with plain JSON schemas, so they are served through
+  // the low-level request handlers instead of McpServer.registerTool().
+  mcp.server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: TOOLS }));
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  mcp.server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args = {} } = request.params;
 
     try {
-      let result: unknown;
-      const group = args['group'] as string | undefined;
-
-      switch (name) {
-        case 'get_status':
-          result = anton.getStatus({ groupName: group });
-          break;
-        case 'list_groups':
-          result = anton.listGroups();
-          break;
-        case 'get_group':
-          result = await anton.getGroup({ groupName: group });
-          break;
-        case 'get_group_assignments':
-          result = await anton.getGroupAssignments({
-            childPublicId: args['childPublicId'] as string | undefined,
-            week: args['week'] as string | undefined,
-            groupName: group,
-          });
-          break;
-        case 'pin_block':
-          result = await anton.pinBlock({
-            ...(args as Parameters<typeof anton.pinBlock>[0]),
-            groupName: group,
-          });
-          break;
-        case 'unpin_block':
-          result = await anton.unpinBlock({
-            blockPuid: args['blockPuid'] as string,
-            weekStartAt: args['weekStartAt'] as string,
-            childPublicId: args['childPublicId'] as string | undefined,
-            groupName: group,
-          });
-          break;
-        case 'get_progress':
-          result = await anton.getProgress({
-            childName: args['childName'] as string,
-            since: args['since'] as string | undefined,
-            groupName: group,
-          });
-          break;
-        case 'get_events':
-          result = await anton.getEvents({
-            childName: args['childName'] as string,
-            since: args['since'] as string | undefined,
-            eventType: args['eventType'] as string | undefined,
-            limit: args['limit'] as number | undefined,
-            groupName: group,
-          });
-          break;
-        case 'get_level_progress':
-          result = await anton.getLevelProgress({
-            levelPuid: args['levelPuid'] as string,
-            childName: args['childName'] as string | undefined,
-            childPublicId: args['childPublicId'] as string | undefined,
-            groupName: group,
-          });
-          break;
-        case 'list_children':
-          result = anton.listChildren({ groupName: group });
-          break;
-        case 'list_plans':
-          result = await anton.listPlans({
-            subject: args['subject'] as string | undefined,
-            grade: args['grade'] as number | undefined,
-            language: args['language'] as string | undefined,
-          });
-          break;
-        case 'list_topics':
-          result = await anton.listTopics({ project: args['project'] as string });
-          break;
-        case 'get_topic_blocks':
-          result = await anton.getTopicBlocks({
-            project: args['project'] as string,
-            topicIndex: args['topicIndex'] as number | undefined,
-            topicTitle: args['topicTitle'] as string | undefined,
-          });
-          break;
-        case 'get_plan':
-          result = await anton.getPlan({ project: args['project'] as string });
-          break;
-        case 'get_lesson':
-          result = await anton.getLesson({ fileId: args['fileId'] as string });
-          break;
-        case 'check_assignment_completion':
-          result = await anton.checkAssignmentCompletion({
-            childName: args['childName'] as string,
-            week: args['week'] as string | undefined,
-            groupName: group,
-          });
-          break;
-        case 'get_weekly_summary':
-          result = await anton.getWeeklySummary({
-            childName: args['childName'] as string,
-            weekStartAt: args['weekStartAt'] as string | undefined,
-            groupName: group,
-          });
-          break;
-        case 'get_subject_summary':
-          result = await anton.getSubjectSummary({
-            childName: args['childName'] as string,
-            subject: args['subject'] as string | undefined,
-            groupName: group,
-          });
-          break;
-        case 'get_activity_timeline':
-          result = await anton.getActivityTimeline({
-            childName: args['childName'] as string,
-            since: args['since'] as string | undefined,
-            groupName: group,
-          });
-          break;
-        case 'compare_children':
-          result = await anton.compareChildren({ groupName: group });
-          break;
-        case 'list_assignments':
-          result = anton.listAssignments({
-            childName: args['childName'] as string | undefined,
-            status: args['status'] as 'pending' | 'completed' | 'cancelled' | undefined,
-          });
-          break;
-        case 'assign_lesson':
-          result = anton.assignLesson({
-            childName: args['childName'] as string,
-            fileId: args['fileId'] as string,
-            lessonTitle: args['lessonTitle'] as string | undefined,
-            note: args['note'] as string | undefined,
-          });
-          break;
-        case 'update_assignment':
-          result = anton.updateAssignment(args['id'] as string, {
-            status: args['status'] as 'pending' | 'completed' | 'cancelled' | undefined,
-            note: args['note'] as string | undefined,
-          });
-          break;
-        case 'delete_assignment':
-          anton.deleteAssignment(args['id'] as string);
-          result = { deleted: true, id: args['id'] };
-          break;
-        default:
-          throw new Error(`Unknown tool: ${name}`);
-      }
-
+      // Object.hasOwn: inherited names such as "constructor" are not tools.
+      if (!Object.hasOwn(handlers, name)) throw new Error(`Unknown tool: ${name}`);
+      const result: unknown = await handlers[name](args, optStr(args, 'group'));
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -693,7 +675,7 @@ export function createServer(anton: Anton): Server {
     }
   });
 
-  return server;
+  return mcp;
 }
 
 /** Start the MCP server over stdio. */

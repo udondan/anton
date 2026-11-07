@@ -106,42 +106,48 @@ async function connectAnton(program: Command, anton: Anton): Promise<void> {
   const { cache: useCache } = program.opts<{ cache: boolean }>();
   const noCache = !useCache || process.env.ANTON_NO_SESSION_CACHE === '1';
 
-  const credential = process.env.ANTON_LOGIN_CODE || process.env.ANTON_LOG_ID;
+  // An empty ANTON_LOGIN_CODE falls through to ANTON_LOG_ID.
+  const credential = [process.env.ANTON_LOGIN_CODE, process.env.ANTON_LOG_ID].find(Boolean);
+  const cacheKey = noCache ? undefined : credential;
 
-  if (!noCache && credential) {
-    const cached = readCache(credential);
-    if (cached) {
-      const fresh = isGroupInfoFresh(cached);
-      try {
-        // Always pass all groupCodes (available even on stale entries).
-        // Pass groups only when within the 10-minute TTL — otherwise
-        // connectFromCache re-fetches all groups using the known groupCodes.
-        await anton.connectFromCache(
-          cached.session,
-          cached.groups.map((g) => g.groupCode),
-          fresh ? cached.groups : undefined,
-        );
-        // If group info was re-fetched, update just that part of the cache
-        // (session remains untouched).
-        if (!fresh) {
-          const data = anton.getCacheData();
-          if (data) updateGroupInfoCache(cached, data.groups);
-        }
-        return;
-      } catch {
-        // Session is no longer valid — clear it and fall through to full login.
-        clearCache();
-      }
-    }
-  }
+  if (cacheKey && (await tryConnectFromCache(anton, cacheKey))) return;
 
   await anton.connect();
 
   // Persist the full session + group info for future invocations.
-  if (!noCache && credential) {
-    const data = anton.getCacheData();
-    if (data) writeCache(credential, data.session, data.groups);
+  const data = cacheKey ? anton.getCacheData() : null;
+  if (cacheKey && data) writeCache(cacheKey, data.session, data.groups);
+}
+
+/**
+ * Connect from the session cache. Returns false when there is no usable cache
+ * entry; a cache entry that fails to connect is cleared.
+ */
+async function tryConnectFromCache(anton: Anton, credential: string): Promise<boolean> {
+  const cached = readCache(credential);
+  if (!cached) return false;
+
+  const fresh = isGroupInfoFresh(cached);
+  try {
+    // Always pass all groupCodes (available even on stale entries).
+    // Pass groups only when within the 10-minute TTL — otherwise
+    // connectFromCache re-fetches all groups using the known groupCodes.
+    await anton.connectFromCache(
+      cached.session,
+      cached.groups.map((g) => g.groupCode),
+      fresh ? cached.groups : undefined,
+    );
+  } catch {
+    // Session is no longer valid — clear it and fall through to full login.
+    clearCache();
+    return false;
   }
+
+  // If group info was re-fetched, update just that part of the cache
+  // (session remains untouched).
+  const data = fresh ? null : anton.getCacheData();
+  if (data) updateGroupInfoCache(cached, data.groups);
+  return true;
 }
 
 function print(data: unknown): void {

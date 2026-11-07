@@ -37,11 +37,28 @@ import {
 } from './client.js';
 import {
   checkAssignmentCompletion,
-  getWeeklySummary,
-  getSubjectSummary,
-  getActivityTimeline,
   compareChildren,
+  getWeeklySummary,
+  projectOf,
 } from './analysis.js';
+import { getActivityTimeline, getSubjectSummary } from './activity.js';
+import {
+  defaultGroup,
+  filterPinnedBlocks,
+  findChild,
+  findPin,
+  pupilsOf,
+  selectGroup,
+  toResolvedChild,
+  type ResolvedChild,
+} from './group-select.js';
+import {
+  buildTopicBlocks,
+  filterPlans,
+  pickByIndexOrTitle,
+  resolveBlockRef,
+  type BlockQuery,
+} from './plan-lookup.js';
 import {
   listAssignments,
   createAssignment,
@@ -54,6 +71,7 @@ import type {
   AssignmentStatus,
   FinishLevelEvent,
   GroupInfo,
+  PinnedBlock,
   Session,
 } from './types.js';
 
@@ -75,11 +93,26 @@ export interface AntonConfig {
   groupName?: string;
 }
 
-interface ResolvedChild {
-  logId?: string;
-  publicId: string;
-  displayName: string;
-  groupCode: string;
+const EPOCH = '1970-01-01';
+
+function currentWeekMonday(): string {
+  const now = new Date();
+  const day = now.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  now.setUTCDate(now.getUTCDate() + diff);
+  return now.toISOString().slice(0, 10);
+}
+
+function onlyFinishLevel(events: AntonEvent[]): FinishLevelEvent[] {
+  return events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
+}
+
+function childrenOf(group: GroupInfo) {
+  return pupilsOf(group).map((m) => ({
+    displayName: m.displayName,
+    publicId: m.publicId,
+    logId: m.logId,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -113,16 +146,7 @@ export class Anton {
 
     // Resolve all family groups
     try {
-      // The API can exhibit eventual consistency: right after login the user-events
-      // log may be temporarily empty.  Retry up to 3 times with back-off.
-      let groupCodes: string[] = [];
-      const delays = [0, 2_000, 5_000];
-      for (const delay of delays) {
-        if (delay > 0) await new Promise((r) => setTimeout(r, delay));
-        const userEvents = await getUserEvents(this.parentSession.logId);
-        groupCodes = extractGroupCodes(userEvents);
-        if (groupCodes.length > 0) break;
-      }
+      const groupCodes = await this.discoverGroupCodes(this.parentSession.logId);
       if (groupCodes.length > 0) {
         this.allGroups = await this.fetchAllGroups(groupCodes, this.parentSession);
       }
@@ -157,14 +181,8 @@ export class Anton {
     this.parentSession = session;
 
     try {
-      if (groups) {
-        // Zero API calls — restore group membership from cache.
-        this.allGroups = groups;
-        return;
-      }
-
-      // Group info TTL expired — re-fetch using the known groupCodes.
-      this.allGroups = await this.fetchAllGroups(groupCodes, session);
+      // With groups: zero API calls. Without (TTL expired): re-fetch using the known groupCodes.
+      this.allGroups = groups ?? (await this.fetchAllGroups(groupCodes, session));
     } catch (err) {
       // Reset to clean state so connect() can perform a full login.
       this.parentSession = null;
@@ -188,31 +206,41 @@ export class Anton {
   // Private helpers
   // ---------------------------------------------------------------------------
 
+  /**
+   * Read the group codes from the user's event log. The API can exhibit
+   * eventual consistency: right after login the log may be temporarily empty,
+   * so retry up to 3 times with back-off.
+   */
+  private async discoverGroupCodes(logId: string): Promise<string[]> {
+    let groupCodes: string[] = [];
+    for (const delay of [0, 2_000, 5_000]) {
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+      groupCodes = extractGroupCodes(await getUserEvents(logId));
+      if (groupCodes.length > 0) break;
+    }
+    return groupCodes;
+  }
+
   private async fetchAllGroups(groupCodes: string[], session: Session): Promise<GroupInfo[]> {
-    return Promise.all(
-      groupCodes.map(async (code) => {
-        const events = await getGroupEvents(code);
-        const info = parseGroupInfo(code, events);
-        try {
-          const descriptions = await getGroupMemberDescriptions(
-            code,
-            session.logId,
-            session.authToken,
-          );
-          const byPublicId = new Map(descriptions.map((d) => [d.publicId, d]));
-          for (const member of info.members) {
-            const desc = byPublicId.get(member.publicId);
-            if (desc) {
-              member.displayName = desc.displayName;
-              member.logId = desc.logId;
-            }
-          }
-        } catch {
-          // Non-fatal: members will have no displayName/logId
+    return Promise.all(groupCodes.map((code) => this.fetchGroup(code, session)));
+  }
+
+  private async fetchGroup(code: string, session: Session): Promise<GroupInfo> {
+    const info = parseGroupInfo(code, await getGroupEvents(code));
+    try {
+      const descriptions = await getGroupMemberDescriptions(code, session.logId, session.authToken);
+      const byPublicId = new Map(descriptions.map((d) => [d.publicId, d]));
+      for (const member of info.members) {
+        const desc = byPublicId.get(member.publicId);
+        if (desc) {
+          member.displayName = desc.displayName;
+          member.logId = desc.logId;
         }
-        return info;
-      }),
-    );
+      }
+    } catch {
+      // Non-fatal: members will have no displayName/logId
+    }
+    return info;
   }
 
   private requireParent(): Session {
@@ -227,85 +255,46 @@ export class Anton {
    * Priority: explicit groupName arg > config.groupName > first group.
    */
   private requireGroup(groupName?: string): GroupInfo {
-    if (this.allGroups.length === 0) {
-      throw new Error('Family group not loaded. Call connect() first.');
-    }
-    const name = groupName ?? this.config.groupName;
-    if (name) {
-      const found = this.allGroups.find((g) => g.groupName.toLowerCase() === name.toLowerCase());
-      if (!found) {
-        throw new Error(
-          `Group "${name}" not found. Available groups: ${this.allGroups.map((g) => g.groupName).join(', ')}`,
-        );
-      }
-      return found;
-    }
-    return this.allGroups[0];
-  }
-
-  private getDefaultGroup(): GroupInfo | null {
-    if (this.allGroups.length === 0) return null;
-    const name = this.config.groupName;
-    if (name) {
-      return (
-        this.allGroups.find((g) => g.groupName.toLowerCase() === name.toLowerCase()) ??
-        this.allGroups[0]
-      );
-    }
-    return this.allGroups[0];
+    return selectGroup(this.allGroups, groupName ?? this.config.groupName);
   }
 
   /** Find a pupil by display name or publicId within the configured group. */
   private resolveChild(name: string, groupName?: string): ResolvedChild {
-    const group = this.requireGroup(groupName);
-    const key = name.toLowerCase();
-    const m = group.members.find(
-      (mem) =>
-        mem.role === 'pupil' &&
-        (mem.displayName?.toLowerCase() === key || mem.publicId.toLowerCase() === key),
-    );
-    if (!m) {
-      throw new Error(
-        `Child "${name}" not found in group "${group.groupName}". Use listChildren() to see member names or public IDs.`,
-      );
-    }
-    return {
-      logId: m.logId,
-      publicId: m.publicId,
-      displayName: m.displayName ?? name,
-      groupCode: group.groupCode,
-    };
+    return findChild(this.requireGroup(groupName), name);
   }
 
-  /** Fetch events for a child, using logId (family groups) or publicId+groupCode (class groups). */
-  private async getChildEvents(
-    child: ResolvedChild,
-    since = '1970-01-01',
-  ): Promise<FinishLevelEvent[]> {
+  /** The publicId of the named child, or the given childPublicId when no name is given. */
+  private childPublicIdOf(opts: {
+    childName?: string;
+    childPublicId?: string;
+    groupName?: string;
+  }): string | undefined {
+    return opts.childName
+      ? this.resolveChild(opts.childName, opts.groupName).publicId
+      : opts.childPublicId;
+  }
+
+  /** Fetch all events of a child, using logId (family groups) or publicId+groupCode (class groups). */
+  private async fetchChildEvents(child: ResolvedChild, since = EPOCH): Promise<AntonEvent[]> {
     const parent = this.requireParent();
-    let events: AntonEvent[];
-    if (child.logId) {
-      events = await getUserEvents(child.logId, since);
-    } else {
-      events = await getGroupMemberEvents(
-        child.publicId,
-        child.groupCode,
-        parent.logId,
-        parent.authToken,
-      );
-      if (since !== '1970-01-01') {
-        events = events.filter((e) => e.created >= since);
-      }
-    }
-    return events.filter((e): e is FinishLevelEvent => e.event === 'finishLevel');
+    if (child.logId) return getUserEvents(child.logId, since);
+    const events = await getGroupMemberEvents(
+      child.publicId,
+      child.groupCode,
+      parent.logId,
+      parent.authToken,
+    );
+    return since === EPOCH ? events : events.filter((e) => e.created >= since);
   }
 
-  private currentWeekMonday(): string {
-    const now = new Date();
-    const day = now.getUTCDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    now.setUTCDate(now.getUTCDate() + diff);
-    return now.toISOString().slice(0, 10);
+  /** Fetch the finishLevel events of a child. */
+  private async getChildEvents(child: ResolvedChild, since = EPOCH): Promise<FinishLevelEvent[]> {
+    return onlyFinishLevel(await this.fetchChildEvents(child, since));
+  }
+
+  /** Fetch the pins currently set in a group. */
+  private async fetchPins(group: GroupInfo): Promise<PinnedBlock[]> {
+    return parsePinnedBlocks(await getGroupEvents(group.groupCode));
   }
 
   // ---------------------------------------------------------------------------
@@ -314,16 +303,13 @@ export class Anton {
 
   /** Return current auth and group status (synchronous — no network call). */
   getStatus(opts?: { groupName?: string }) {
-    const defaultGroup = opts?.groupName
+    const group = opts?.groupName
       ? this.requireGroup(opts.groupName)
-      : this.getDefaultGroup();
+      : defaultGroup(this.allGroups, this.config.groupName);
+    const parent = this.parentSession;
     return {
-      parent: this.parentSession
-        ? {
-            displayName: this.parentSession.displayName,
-            logId: this.parentSession.logId,
-            loginCode: this.parentSession.loginCode,
-          }
+      parent: parent
+        ? { displayName: parent.displayName, logId: parent.logId, loginCode: parent.loginCode }
         : null,
       groups: this.allGroups.map((g) => ({
         groupCode: g.groupCode,
@@ -333,14 +319,7 @@ export class Anton {
         isPlus: g.isPlus,
         plusValidUntil: g.plusValidUntil,
       })),
-      children:
-        defaultGroup?.members
-          .filter((m) => m.role === 'pupil')
-          .map((m) => ({
-            displayName: m.displayName,
-            publicId: m.publicId,
-            logId: m.logId,
-          })) ?? [],
+      children: group ? childrenOf(group) : [],
     };
   }
 
@@ -385,16 +364,8 @@ export class Anton {
 
   /** List all pinned blocks (assignments) in the group, with optional filters. */
   async getGroupAssignments(opts?: { childPublicId?: string; week?: string; groupName?: string }) {
-    const group = this.requireGroup(opts?.groupName);
-    const groupEvents = await getGroupEvents(group.groupCode);
-    let blocks = parsePinnedBlocks(groupEvents);
-    if (opts?.childPublicId) {
-      blocks = blocks.filter((b) => b.subgroup === opts.childPublicId || b.subgroup == null);
-    }
-    if (opts?.week) {
-      blocks = blocks.filter((b) => b.weekStartAt === opts.week);
-    }
-    return blocks;
+    const pins = await this.fetchPins(this.requireGroup(opts?.groupName));
+    return filterPinnedBlocks(pins, { childPublicId: opts?.childPublicId, week: opts?.week });
   }
 
   /**
@@ -403,95 +374,35 @@ export class Anton {
    * Identify the block either by (project + topic + block) lookup or
    * directly by (blockPuid + blockPath).
    */
-  async pinBlock(opts: {
-    project?: string;
-    topicIndex?: number;
-    topicTitle?: string;
-    blockIndex?: number;
-    blockTitle?: string;
-    blockPuid?: string;
-    blockPath?: string;
-    weekStartAt?: string;
-    childName?: string;
-    childPublicId?: string;
-    groupName?: string;
-  }) {
+  async pinBlock(
+    opts: BlockQuery & {
+      project?: string;
+      blockPuid?: string;
+      blockPath?: string;
+      weekStartAt?: string;
+      childName?: string;
+      childPublicId?: string;
+      groupName?: string;
+    },
+  ) {
     const parent = this.requireParent();
     const group = this.requireGroup(opts.groupName);
+    const childPublicId = this.childPublicIdOf(opts);
 
-    let childPublicId = opts.childPublicId;
-    if (opts.childName) {
-      childPublicId = this.resolveChild(opts.childName, opts.groupName).publicId;
-    }
-
-    let blockPuid = opts.blockPuid;
-    let blockPath = opts.blockPath;
-
-    if (opts.project) {
-      const plan = await getPlan(opts.project);
-      const topics = plan.topics;
-
-      let topic: (typeof topics)[0] | undefined;
-      if (opts.topicIndex != null) {
-        if (
-          !Number.isInteger(opts.topicIndex) ||
-          opts.topicIndex < 0 ||
-          opts.topicIndex >= topics.length
-        ) {
-          throw new Error(
-            `Topic index ${String(opts.topicIndex)} out of range (0–${String(topics.length - 1)})`,
-          );
-        }
-        topic = topics[opts.topicIndex];
-      } else if (opts.topicTitle) {
-        const needle = opts.topicTitle.toLowerCase();
-        topic = topics.find((t) => t.title.toLowerCase().includes(needle));
-        if (!topic) throw new Error(`No topic matching "${opts.topicTitle}"`);
-      } else {
-        throw new Error('Provide topicIndex or topicTitle when using project-based lookup');
-      }
-
-      const blocks = topic.blocks;
-      let block: (typeof blocks)[0] | undefined;
-      if (opts.blockIndex != null) {
-        if (
-          !Number.isInteger(opts.blockIndex) ||
-          opts.blockIndex < 0 ||
-          opts.blockIndex >= blocks.length
-        ) {
-          throw new Error(
-            `Block index ${String(opts.blockIndex)} out of range (0–${String(blocks.length - 1)})`,
-          );
-        }
-        block = blocks[opts.blockIndex];
-      } else if (opts.blockTitle) {
-        const needle = opts.blockTitle.toLowerCase();
-        block = blocks.find((b) => b.title.toLowerCase().includes(needle));
-        if (!block) throw new Error(`No block matching "${opts.blockTitle}"`);
-      } else {
-        throw new Error('Provide blockIndex or blockTitle when using project-based lookup');
-      }
-
-      blockPuid = block.puid;
-      blockPath = `/../${opts.project}/${topic.puid.split('/')[1]}/${block.puid.split('/')[1]}/block`;
-    }
-
+    const { blockPuid, blockPath } = opts.project
+      ? resolveBlockRef(opts.project, await getPlan(opts.project), opts)
+      : opts;
     if (!blockPuid || !blockPath) {
       throw new Error(
         'Provide either (project + topicIndex/topicTitle + blockIndex/blockTitle) or (blockPuid + blockPath)',
       );
     }
 
-    const weekStartAt = opts.weekStartAt ?? this.currentWeekMonday();
-
+    const weekStartAt = opts.weekStartAt ?? currentWeekMonday();
     await pinGroupBlock(
-      group.groupCode,
-      blockPuid,
-      blockPath,
-      weekStartAt,
+      { groupCode: group.groupCode, blockPuid, blockPath, weekStartAt, childPublicId },
       parent.logId,
       parent.authToken,
-      childPublicId,
     );
 
     return {
@@ -513,23 +424,7 @@ export class Anton {
   }) {
     const parent = this.requireParent();
     const group = this.requireGroup(opts.groupName);
-    const groupEvents = await getGroupEvents(group.groupCode);
-    const pins = parsePinnedBlocks(groupEvents);
-    const matches = pins.filter(
-      (p) =>
-        p.puid === opts.blockPuid &&
-        p.weekStartAt === opts.weekStartAt &&
-        (opts.childPublicId == null || p.subgroup === opts.childPublicId),
-    );
-    if (matches.length === 0) {
-      throw new Error(`No pin found for puid=${opts.blockPuid} week=${opts.weekStartAt}`);
-    }
-    if (opts.childPublicId == null && matches.length > 1) {
-      throw new Error(
-        `Multiple pins found for puid=${opts.blockPuid} week=${opts.weekStartAt}; provide childPublicId to disambiguate`,
-      );
-    }
-    const match = matches[0];
+    const match = findPin(await this.fetchPins(group), opts);
     await unpinGroupBlock(group.groupCode, match.created, parent.logId, parent.authToken);
     return {
       unpinned: true,
@@ -545,10 +440,7 @@ export class Anton {
 
   /** List all pupil members of the family group. */
   listChildren(opts?: { groupName?: string }) {
-    const group = this.requireGroup(opts?.groupName);
-    return group.members
-      .filter((m) => m.role === 'pupil')
-      .map((m) => ({ displayName: m.displayName, publicId: m.publicId, logId: m.logId }));
+    return childrenOf(this.requireGroup(opts?.groupName));
   }
 
   // ---------------------------------------------------------------------------
@@ -557,21 +449,8 @@ export class Anton {
 
   /** Summarise completed levels and stars for a child. */
   async getProgress(opts: { childName: string; since?: string; groupName?: string }) {
-    const since = opts.since ?? '1970-01-01';
     const child = this.resolveChild(opts.childName, opts.groupName);
-    const parent = this.requireParent();
-    let events: AntonEvent[];
-    if (child.logId) {
-      events = await getUserEvents(child.logId, since);
-    } else {
-      events = await getGroupMemberEvents(
-        child.publicId,
-        child.groupCode,
-        parent.logId,
-        parent.authToken,
-      );
-      if (since !== '1970-01-01') events = events.filter((e) => e.created >= since);
-    }
+    const events = await this.fetchChildEvents(child, opts.since);
     return summariseProgress(child.logId ?? child.publicId, events);
   }
 
@@ -583,25 +462,12 @@ export class Anton {
     limit?: number;
     groupName?: string;
   }) {
-    const since = opts.since ?? '1970-01-01';
-    const limit = opts.limit ?? 100;
     const child = this.resolveChild(opts.childName, opts.groupName);
-    const parent = this.requireParent();
-    let events: AntonEvent[];
-    if (child.logId) {
-      events = await getUserEvents(child.logId, since);
-    } else {
-      events = await getGroupMemberEvents(
-        child.publicId,
-        child.groupCode,
-        parent.logId,
-        parent.authToken,
-      );
-      if (since !== '1970-01-01') events = events.filter((e) => e.created >= since);
-    }
-    if (opts.eventType) events = events.filter((e) => e.event === opts.eventType);
-    events = [...events].sort((a, b) => b.created.localeCompare(a.created));
-    return events.slice(0, limit);
+    const events = await this.fetchChildEvents(child, opts.since);
+    return events
+      .filter((e) => !opts.eventType || e.event === opts.eventType)
+      .sort((a, b) => b.created.localeCompare(a.created))
+      .slice(0, opts.limit ?? 100);
   }
 
   /** Get per-level performance data from the reviewReport endpoint. */
@@ -612,10 +478,7 @@ export class Anton {
     groupName?: string;
   }) {
     const parent = this.requireParent();
-    let childPublicId = opts.childPublicId;
-    if (opts.childName) {
-      childPublicId = this.resolveChild(opts.childName, opts.groupName).publicId;
-    }
+    const childPublicId = this.childPublicIdOf(opts);
     if (!childPublicId) throw new Error('Provide childName or childPublicId');
     return getLevelReviewReport(opts.levelPuid, childPublicId, parent.logId, parent.authToken);
   }
@@ -626,31 +489,7 @@ export class Anton {
 
   /** List all available Anton courses (~285 plans). */
   async listPlans(opts?: { subject?: string; grade?: number; language?: string }) {
-    const plans = await getPlansCatalogue();
-    const language = opts?.language ?? 'de';
-    const subject = opts?.subject?.toLowerCase();
-    const grade = opts?.grade;
-
-    return plans
-      .filter((p) => !p.isDebug)
-      .filter((p) => p.guiLanguages.includes(language))
-      .filter((p) => {
-        if (!subject) return true;
-        const s = typeof p.subject === 'string' ? p.subject : (p.subject[language] ?? '');
-        return s.toLowerCase().includes(subject);
-      })
-      .filter((p) => {
-        if (grade == null) return true;
-        return p.grades.includes(grade);
-      })
-      .map((p) => ({
-        project: p.project,
-        title: typeof p.title === 'string' ? p.title : (p.title[language] ?? p.project),
-        subject: typeof p.subject === 'string' ? p.subject : (p.subject[language] ?? ''),
-        grades: p.grades,
-        totalBlocks: p.totalBlocks,
-        totalLevels: p.totalLevels,
-      }));
+    return filterPlans(await getPlansCatalogue(), opts);
   }
 
   /** List topic titles + indices for a course (lightweight, no blocks). */
@@ -671,33 +510,18 @@ export class Anton {
   /** Fetch all blocks (and levels) for a single topic within a course. */
   async getTopicBlocks(opts: { project: string; topicIndex?: number; topicTitle?: string }) {
     const plan = await getPlan(opts.project);
-    const topics = plan.topics;
-
-    let topic: (typeof topics)[0] | undefined;
-    if (opts.topicIndex != null) {
-      if (
-        !Number.isInteger(opts.topicIndex) ||
-        opts.topicIndex < 0 ||
-        opts.topicIndex >= topics.length
-      ) {
-        throw new Error(
-          `Topic index ${String(opts.topicIndex)} out of range (0–${String(topics.length - 1)})`,
-        );
-      }
-      topic = topics[opts.topicIndex];
-    } else if (opts.topicTitle) {
-      const needle = opts.topicTitle.toLowerCase();
-      topic = topics.find((t) => t.title.toLowerCase().includes(needle));
-      if (!topic) throw new Error(`No topic matching "${opts.topicTitle}"`);
-    } else {
-      throw new Error('Provide topicIndex or topicTitle');
-    }
-
+    const topic = pickByIndexOrTitle(
+      plan.topics,
+      'Topic',
+      opts.topicIndex,
+      opts.topicTitle,
+      'Provide topicIndex or topicTitle',
+    );
     return {
       project: opts.project,
       topicTitle: topic.title,
       topicPuid: topic.puid,
-      blocks: this.buildTopicBlocks(opts.project, topic),
+      blocks: buildTopicBlocks(opts.project, topic),
     };
   }
 
@@ -712,7 +536,7 @@ export class Anton {
       topics: plan.topics.map((t) => ({
         title: t.title,
         puid: t.puid,
-        blocks: this.buildTopicBlocks(opts.project, t),
+        blocks: buildTopicBlocks(opts.project, t),
       })),
     };
   }
@@ -722,32 +546,6 @@ export class Anton {
     return getLessonContent(opts.fileId);
   }
 
-  private buildTopicBlocks(
-    project: string,
-    t: {
-      title: string;
-      puid: string;
-      blocks: {
-        title: string;
-        puid: string;
-        levels: { title: string; puid: string; type?: string; path?: string }[];
-      }[];
-    },
-  ) {
-    return t.blocks.map((b) => ({
-      title: b.title,
-      puid: b.puid,
-      blockPath: `/../${project}/${t.puid.split('/')[1]}/${b.puid.split('/')[1]}/block`,
-      totalLevels: b.levels.length,
-      levels: b.levels.map((lv) => ({
-        title: lv.title,
-        puid: lv.puid,
-        type: lv.type,
-        ...(lv.path ? { fileId: `level${lv.path.replace(/^\/\.\./, '')}` } : {}),
-      })),
-    }));
-  }
-
   // ---------------------------------------------------------------------------
   // Analysis
   // ---------------------------------------------------------------------------
@@ -755,44 +553,33 @@ export class Anton {
   /** Check which assigned blocks a child has completed. */
   async checkAssignmentCompletion(opts: { childName: string; week?: string; groupName?: string }) {
     const child = this.resolveChild(opts.childName, opts.groupName);
-    const group = this.requireGroup(opts.groupName);
-    const groupEvents = await getGroupEvents(group.groupCode);
-    const pinnedBlocks = parsePinnedBlocks(groupEvents);
+    const pinnedBlocks = await this.fetchPins(this.requireGroup(opts.groupName));
 
-    const relevant = pinnedBlocks.filter(
-      (b) => b.subgroup == null || b.subgroup === child.publicId,
-    );
-    const filtered = opts.week ? relevant.filter((b) => b.weekStartAt === opts.week) : relevant;
-
-    const projects = Array.from(new Set(filtered.map((b) => b.puid.split('/')[0])));
+    const relevant = filterPinnedBlocks(pinnedBlocks, {
+      childPublicId: child.publicId,
+      week: opts.week,
+    });
+    const projects = Array.from(new Set(relevant.map((b) => projectOf(b.puid))));
     const plans = await Promise.all(projects.map((p) => getPlan(p)));
     const planCache = new Map(projects.map((p, i) => [p, plans[i]]));
 
     const finishEvents = await this.getChildEvents(child);
-
-    return checkAssignmentCompletion(
-      child.displayName,
-      pinnedBlocks,
-      planCache,
-      finishEvents,
-      opts.week,
-      child.publicId,
-    );
+    return checkAssignmentCompletion(child.displayName, pinnedBlocks, planCache, finishEvents, {
+      week: opts.week,
+      publicId: child.publicId,
+    });
   }
 
   /** Weekly rollup of a child's activity. */
   async getWeeklySummary(opts: { childName: string; weekStartAt?: string; groupName?: string }) {
     const child = this.resolveChild(opts.childName, opts.groupName);
-    const weekStartAt = opts.weekStartAt ?? this.currentWeekMonday();
-
-    const group = this.requireGroup(opts.groupName);
-    const groupEvents = await getGroupEvents(group.groupCode);
-    const pinnedBlocks = parsePinnedBlocks(groupEvents).filter(
-      (b) => b.weekStartAt === weekStartAt && (b.subgroup == null || b.subgroup === child.publicId),
-    );
-    const assignedBlockPuids = new Set(pinnedBlocks.map((b) => b.puid));
+    const weekStartAt = opts.weekStartAt ?? currentWeekMonday();
+    const pins = filterPinnedBlocks(await this.fetchPins(this.requireGroup(opts.groupName)), {
+      childPublicId: child.publicId,
+      week: weekStartAt,
+    });
+    const assignedBlockPuids = new Set(pins.map((b) => b.puid));
     const finishEvents = await this.getChildEvents(child);
-
     return getWeeklySummary(child.displayName, weekStartAt, finishEvents, assignedBlockPuids);
   }
 
@@ -805,7 +592,7 @@ export class Anton {
 
   /** Active days, streaks, gaps, and daily breakdown. */
   async getActivityTimeline(opts: { childName: string; since?: string; groupName?: string }) {
-    const since = opts.since ?? '1970-01-01';
+    const since = opts.since ?? EPOCH;
     const child = this.resolveChild(opts.childName, opts.groupName);
     const finishEvents = await this.getChildEvents(child, since);
     return getActivityTimeline(child.displayName, finishEvents, since);
@@ -814,15 +601,9 @@ export class Anton {
   /** Side-by-side comparison of all children in a group. */
   async compareChildren(opts?: { groupName?: string }) {
     const group = this.requireGroup(opts?.groupName);
-    const pupils = group.members.filter((m) => m.role === 'pupil');
     const rows = await Promise.all(
-      pupils.map(async (m) => {
-        const child: ResolvedChild = {
-          logId: m.logId,
-          publicId: m.publicId,
-          displayName: m.displayName ?? m.publicId,
-          groupCode: group.groupCode,
-        };
+      pupilsOf(group).map(async (m) => {
+        const child = toResolvedChild(m, group, m.publicId);
         const finishEvents = await this.getChildEvents(child);
         return { name: child.displayName, finishEvents };
       }),

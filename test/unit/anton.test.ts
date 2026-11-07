@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as activity from '../../src/activity.js';
 import * as analysis from '../../src/analysis.js';
 import { Anton } from '../../src/Anton.js';
 import * as client from '../../src/client.js';
@@ -39,16 +40,20 @@ vi.mock('../../src/client.js', () => ({
   summariseProgress: vi.fn(),
 }));
 
-vi.mock('../../src/analysis.js', () => ({
+vi.mock('../../src/analysis.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof analysis>()),
   checkAssignmentCompletion: vi.fn(() => 'completion'),
   getWeeklySummary: vi.fn(() => 'weekly'),
-  getSubjectSummary: vi.fn(() => 'subjects'),
-  getActivityTimeline: vi.fn(() => 'timeline'),
   compareChildren: vi.fn(() => 'compare'),
 }));
 
+vi.mock('../../src/activity.js', () => ({
+  getSubjectSummary: vi.fn(() => 'subjects'),
+  getActivityTimeline: vi.fn(() => 'timeline'),
+}));
+
 const c = vi.mocked(client);
-const a = vi.mocked(analysis);
+const a = vi.mocked({ ...analysis, ...activity });
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -495,13 +500,15 @@ describe('pinBlock', () => {
       childPublicId: 'P-alice',
     });
     expect(c.pinGroupBlock).toHaveBeenCalledWith(
-      'G1',
-      'c-mat-4/block-02-brueche-zuordnen',
-      '/../c-mat-4/topic-07-brueche/block-02-brueche-zuordnen/block',
-      '2099-01-05',
+      {
+        groupCode: 'G1',
+        blockPuid: 'c-mat-4/block-02-brueche-zuordnen',
+        blockPath: '/../c-mat-4/topic-07-brueche/block-02-brueche-zuordnen/block',
+        weekStartAt: '2099-01-05',
+        childPublicId: 'P-alice',
+      },
       'L-parent',
       'token',
-      'P-alice',
     );
   });
 
@@ -954,21 +961,20 @@ describe('checkAssignmentCompletion', () => {
     const anton = await connected();
     expect(await anton.checkAssignmentCompletion({ childName: 'Alice' })).toBe('completion');
     expect(c.getPlan.mock.calls.map(([p]) => p)).toEqual(['c-mat-4', 'c-eng-5']);
-    const [name, allPins, planCache, events, week, publicId] =
+    const [name, allPins, planCache, events, filter] =
       a.checkAssignmentCompletion.mock.calls[0] ?? [];
     expect(name).toBe('Alice');
     expect(allPins).toBe(pins);
     expect([...(planCache?.keys() ?? [])]).toEqual(['c-mat-4', 'c-eng-5']);
     expect(events).toEqual([finish]);
-    expect(week).toBeUndefined();
-    expect(publicId).toBe('P-alice');
+    expect(filter).toEqual({ week: undefined, publicId: 'P-alice' });
   });
 
   it('limits the plans to the given week', async () => {
     const anton = await connected();
     await anton.checkAssignmentCompletion({ childName: 'Alice', week: '2099-01-12' });
     expect(c.getPlan.mock.calls.map(([p]) => p)).toEqual(['c-mat-4']);
-    expect(a.checkAssignmentCompletion.mock.calls[0]?.[4]).toBe('2099-01-12');
+    expect(a.checkAssignmentCompletion.mock.calls[0]?.[4]?.week).toBe('2099-01-12');
   });
 });
 
