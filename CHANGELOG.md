@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.8](https://github.com/udondan/anton/compare/v1.4.7...v1.4.8) (2026-11-08)
+
+
+### Dependencies
+
+* **deps:** update dependency @modelcontextprotocol/inspector to v2.14.0 ([#122](https://github.com/udondan/anton/issues/122)) ([6afa566](https://github.com/udondan/anton/commit/6afa5660f18e62d7d826ef316d6d4e2d0aadbd82))
+* **deps:** update dependency eslint to v10.14.0 ([#113](https://github.com/udondan/anton/issues/113)) ([d04526c](https://github.com/udondan/anton/commit/d04526c8bc00a86f3b07c9a4984657cc3b5001f6))
+* **deps:** update dependency zizmor to v1.32.0 ([#120](https://github.com/udondan/anton/issues/120)) ([1a43974](https://github.com/udondan/anton/commit/1a43974adb901cd8045168b8e10acb681d125a7a))
+* **deps:** update jdx/mise-action action to v5.2.5 ([#117](https://github.com/udondan/anton/issues/117)) ([6c07ae7](https://github.com/udondan/anton/commit/6c07ae7f71764dfca7c3b6f37efe6b9faf1557bd))
+* **deps:** update jdx/mise-action action to v5.2.6 ([#118](https://github.com/udondan/anton/issues/118)) ([389e103](https://github.com/udondan/anton/commit/389e10374b24e3d7578020d0bc085101005e0d22))
+* **deps:** update vitest monorepo to v5.1.0 ([#119](https://github.com/udondan/anton/issues/119)) ([b053e8d](https://github.com/udondan/anton/commit/b053e8d96667e5115f6b311981bed04427a6a840))
+
 ## [1.4.7](https://github.com/udondan/anton/compare/v1.4.6...v1.4.7) (2026-11-02)
 
 
