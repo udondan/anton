@@ -1,12 +1,12 @@
 ---
 name: anton
 description: >
-  Reference skill for operating the Anton CLI (@udondan/anton) to monitor
+  Reference skill for operating the unofficial `anton` CLI (@udondan/anton) to monitor
   children's learning on anton.app. Use this skill whenever you need to run
   `anton` commands — checking a child's progress, browsing lesson plans,
   pinning or unpinning lesson blocks, reviewing weekly activity, checking
   assignment completion, or managing local assignments. Trigger for any task
-  involving the Anton CLI, even if the user just says "check how Emma did this
+  involving the `anton` CLI, even if the user just says "check how Emma did this
   week" or "pin the fractions lesson for Max" — those map directly to CLI
   commands covered here.
 ---

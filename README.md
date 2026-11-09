@@ -9,6 +9,9 @@
 [![Maintainability](https://qlty.sh/gh/udondan/projects/anton/maintainability.svg)][qlty]
 [![License](https://img.shields.io/github/license/udondan/anton)](LICENSE)
 
+> [!NOTE]
+> Inoffizielles Community-Projekt. Nicht mit der solocode GmbH (Anbieter von ANTON) verbunden, nicht von ihr unterstützt oder autorisiert.
+
 Node.js-Paket zur Überwachung des Lernfortschritts von Kindern auf [anton.app](https://anton.app). Es kapselt die inoffizielle anton.app-API und bietet drei Schnittstellen über einen gemeinsamen Kern:
 
 - **SDK** — importierbare `Anton`-Klasse für Node.js-Projekte
@@ -58,6 +61,7 @@ Zusätzlich gibt es einen [Agent Skill](#agent-skill-für-ki-assistenten), der K
   - [Anwendungsbeispiele mit Claude](#anwendungsbeispiele-mit-claude)
   - [Verfügbare MCP-Tools](#verfügbare-mcp-tools)
 - [Lizenz](#lizenz)
+- [Disclaimer](#disclaimer)
 
 ## Installation
 
@@ -525,5 +529,9 @@ Claude liest für jedes Kind den bisherigen Verlauf, prüft mit `check_assignmen
 ## Lizenz
 
 MIT
+
+## Disclaimer
+
+Dieses Projekt ist ein inoffizielles, unabhängiges Open-Source-Projekt und steht in keiner Verbindung zur solocode GmbH. ANTON und anton.app sind Produkte bzw. Marken der solocode GmbH. Die Namen werden ausschließlich zur Beschreibung der Kompatibilität verwendet. Die Nutzung erfolgt auf eigenes Risiko und unter Beachtung der Nutzungsbedingungen von ANTON.
 
 [qlty]: https://qlty.sh/gh/udondan/projects/anton
