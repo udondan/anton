@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.8](https://github.com/udondan/anton/compare/v1.4.7...v1.4.8) (2026-11-14)
+
+
+### Bug Fixes
+
+* **deps:** update @hono/node-server to 2.1.8 ([#131](https://github.com/udondan/anton/issues/131)) ([080905e](https://github.com/udondan/anton/commit/080905ef48b15417709711cf0b1101d9e20464d8))
+* **deps:** update node-server to 2.1.8 ([080905e](https://github.com/udondan/anton/commit/080905ef48b15417709711cf0b1101d9e20464d8))
+
 ## [1.4.7](https://github.com/udondan/anton/compare/v1.4.6...v1.4.7) (2026-11-02)
 
 Only development dependencies were updated. Nothing changed for users.
