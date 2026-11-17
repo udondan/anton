@@ -57,14 +57,6 @@ test_patterns = [
 [smells]
 mode = "block"
 
-# osv-scanner and trivy read bun.lock, but qlty's default file types don't
-# include it, so neither scanner would run on this project's lockfile.
-[file_types.osv-scanner]
-globs = ["**/bun.lock"]
-
-[file_types.lockfile]
-globs = ["**/bun.lock"]
-
 [[source]]
 name = "default"
 default = true
@@ -73,12 +65,12 @@ default = true
 [[plugin]]
 name = "radarlint-js"
 
-# Known vulnerabilities in the dependencies (bun.lock).
-[[plugin]]
-name = "osv-scanner"
-
+# Without fs-vuln: vulnerable dependencies are Dependabot alerts (see
+# .github/workflows/dependency-submission.yml) and don't fail pull requests,
+# which they would even when no fixed version exists yet.
 [[plugin]]
 name = "trivy"
+drivers = ["config", "fs-secret"]
 
 # Committed secrets.
 [[plugin]]

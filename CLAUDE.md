@@ -40,9 +40,12 @@ ANTON_LOGIN_CODE=YOUR-CODE mise run test
 CI also runs qlty (config in `.qlty/qlty.toml`). Both must stay clean; pull requests fail on new code smells:
 
 ```bash
-qlty check --all    # plugins: radarlint-js, osv-scanner, trivy, gitleaks, trufflehog
+qlty check --all    # plugins: radarlint-js, trivy (config, secrets), gitleaks, trufflehog
 qlty smells --all   # complexity, duplication, too many parameters
 ```
+
+Vulnerable dependencies don't fail pull requests: `dependency-submission.yml` submits `bun.lock`
+to GitHub's dependency graph on every change on main, and Dependabot reports them as alerts.
 
 ### CI
 
