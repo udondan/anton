@@ -44,6 +44,17 @@ qlty check --all    # plugins: radarlint-js, osv-scanner, trivy, gitleaks, truff
 qlty smells --all   # complexity, duplication, too many parameters
 ```
 
+### CI
+
+Node.js and Bun versions are pinned only in `mise.toml`; the workflows install them with
+`jdx/mise-action` (tool cache on in `test.yml`, off in `publish.yml`). Every job in `test.yml`
+except `required` waits for boarding-gate (job `Queue`, one run at a time because the live tests
+share one anton.app account) and fails if it failed: while another run holds the turn, the branch
+likely needs a rebase anyway, so nothing runs in parallel. Pull requests from forks skip the wait
+and run only the offline tests. On pull requests the `changes` job (`dorny/paths-filter`) decides
+whether the tests run; when the code or the build starts depending on another file, add it to that
+filter, or the tests silently skip. `actions` (actionlint, zizmor) and `qlty` always run.
+
 ## Configuration
 
 ```bash
