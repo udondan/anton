@@ -68,6 +68,7 @@ jobs:
               - mise.toml
               - tsconfig*.json
               - eslint.config.js
+              - .prettierrc.json
               - vitest.config.ts
               - .github/workflows/test.yml
 
