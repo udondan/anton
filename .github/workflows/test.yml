@@ -52,6 +52,7 @@ jobs:
       pull-requests: read # paths-filter lists the PR's files via the API
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      docker: ${{ steps.filter.outputs.docker }}
     steps:
       - name: Check turn
         if: needs.boarding-gate.result == 'failure' || needs.boarding-gate.result == 'cancelled'
@@ -70,6 +71,16 @@ jobs:
               - eslint.config.js
               - .prettierrc.json
               - vitest.config.ts
+              - .github/workflows/test.yml
+            docker:
+              - src/**
+              - package.json
+              - bun.lock
+              - mise.toml
+              - tsconfig.json
+              - Dockerfile
+              - .dockerignore
+              - docker-mcp.yml
               - .github/workflows/test.yml
 
   test:
@@ -157,6 +168,57 @@ jobs:
           done
           echo "::warning::Codecov didn't report within 5 minutes, coverage is not checked."
 
+  # Builds the image and runs it the way the Docker MCP Toolkit does, through
+  # a profile and the gateway. Needs no anton.app account: the gateway sets
+  # missing secrets to <UNKNOWN>, and the server only signs in when a tool is
+  # called, so listing the tools sends no request to anton.app. Only for pull
+  # requests that change the image.
+  docker:
+    name: Docker
+    needs: [boarding-gate, changes]
+    # Fail instead of skip if boarding-gate failed, see the test job.
+    if: ${{ !cancelled() && needs.changes.outputs.docker == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check turn
+        if: needs.boarding-gate.result == 'failure' || needs.boarding-gate.result == 'cancelled'
+        run: exit 1
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          install_args: node bun github:docker/mcp-gateway # versions from mise.toml
+
+      - name: Install docker mcp plugin
+        run: |
+          mkdir -p ~/.docker/cli-plugins
+          ln -s "$(mise which docker-mcp)" ~/.docker/cli-plugins/docker-mcp
+          docker mcp version
+
+      # Strict install from the lock file before docker-build compiles dist/.
+      - run: bun install --frozen-lockfile
+
+      - run: mise run docker-build
+
+      - name: Run the CLI in the image
+        run: |
+          docker run --rm udondan/anton --version
+          docker run --rm udondan/anton --help
+
+      - run: mise run docker-register ci
+
+      # The gateway only verifies signatures of images under mcp/, and finds
+      # the locally built image without pulling it.
+      - name: List tools through the gateway
+        run: |
+          docker mcp gateway run --profile ci --dry-run --verbose 2>&1 | tee gateway.log
+          grep -E "anton: \([1-9][0-9]* tools\)" gateway.log
+
   actions:
     needs: boarding-gate
     # Fail instead of skip if boarding-gate failed, see the test job.
@@ -230,7 +292,7 @@ jobs:
 
   # The only test check the ruleset requires, whatever jobs are added later.
   required:
-    needs: [boarding-gate, changes, test, coverage, actions, qlty]
+    needs: [boarding-gate, changes, test, coverage, docker, actions, qlty]
     if: always()
     runs-on: ubuntu-latest
     steps:
