@@ -1,0 +1,18 @@
+# Server definition for the Docker MCP Toolkit.
+# Add it to a profile with `mise run docker-register` (see README, section Docker MCP Toolkit).
+name: anton
+type: server
+image: udondan/anton:latest
+title: anton (inoffiziell)
+description: Inoffiziell, nicht mit der solocode GmbH verbunden. Lernfortschritt der Kinder auf anton.app verfolgen, Lektionen durchsuchen und zuweisen
+# Local assignments and the session cache, see HOME in the Dockerfile.
+volumes:
+  - anton-data:/data
+# No ANTON_GROUP: the gateway sets secrets that aren't set to <UNKNOWN>, so an
+# optional one would select a group of that name. The tools take a `group`
+# argument instead.
+secrets:
+  - name: anton.login_code
+    env: ANTON_LOGIN_CODE
+    example: XXXX-YYYY
+    description: Der 8-stellige Eltern-Login-Code aus der Anton-App

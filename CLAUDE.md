@@ -56,7 +56,18 @@ share one anton.app account) and fails if it failed: while another run holds the
 likely needs a rebase anyway, so nothing runs in parallel. Pull requests from forks skip the wait
 and run only the offline tests. On pull requests the `changes` job (`dorny/paths-filter`) decides
 whether the tests run; when the code or the build starts depending on another file, add it to that
-filter, or the tests silently skip. `actions` (actionlint, zizmor) and `qlty` always run.
+filter, or the tests silently skip. `actions` (actionlint, zizmor) and `qlty` always run. The
+`docker` job runs only on pull requests whose files match the `docker` filter: it builds the
+image and lists the tools through the Docker MCP Gateway, without anton.app credentials.
+
+### Docker
+
+`Dockerfile` copies the compiled `dist/` (`mise run docker-build` builds it first) onto
+`node:26-alpine`; Bun only installs the runtime dependencies. `HOME=/data`, so a volume there keeps
+`~/.config/anton` (assignments, session cache). `docker-mcp.yml` is the server definition for the
+Docker MCP Toolkit (`mise run docker-register [profile]`, `mise run docker` does both). `publish.yml`
+pushes multi-arch images to Docker Hub (`udondan/anton`) on releases, signed with cosign; the token
+lives in the environment `docker-hub`.
 
 ## Configuration
 
@@ -90,7 +101,9 @@ src/
   assignments.ts  — Local JSON store at ~/.config/anton/assignments.json
   session-cache.ts— CLI-only: session + group info cache at ~/.config/anton/session.json
   mcp.ts          — MCP server wrapping Anton class as 24 tools; createServer() builds it,
-                    startMcpServer() connects it over stdio
+                    startMcpServer() connects it over stdio. Signs in lazily on the first
+                    tool call (the `connect` callback), so it starts and lists its tools
+                    without credentials — the Docker MCP Gateway relies on that
   program.ts      — commander-based CLI as main(argv) → exit code (runs in-process in tests);
                     delegates auth to connectAnton() which reads/writes the session cache
                     before calling Anton.connect()
@@ -106,8 +119,8 @@ src/
 
 **Session cache** lives only in `program.ts` + `session-cache.ts`. The `Anton` class has two entry points for authentication:
 
-- `connect()` — full login (SDK, MCP)
-- `connectFromCache(session, groupCodes, groups?)` — zero or N API calls (CLI only)
+- `connect()` — full login (SDK)
+- `connectFromCache(session, groupCodes, groups?)` — zero or N API calls (CLI and MCP, via `connectAnton()`)
 
 The two-layer cache: session is kept until an auth error; groups has a 10-minute TTL and all groups are re-fetched transparently without re-logging in. Cache migrates from old single-`groupInfo` format automatically.
 

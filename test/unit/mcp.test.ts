@@ -65,9 +65,12 @@ interface ToolResult {
   isError?: boolean;
 }
 
-async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+async function withClient<T>(
+  fn: (client: Client) => Promise<T>,
+  connect?: () => Promise<void>,
+): Promise<T> {
   const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
-  const server = createServer(anton as unknown as Anton);
+  const server = createServer(anton as unknown as Anton, connect);
   const client = new Client({ name: 'test-client', version: '1.0.0' });
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
   try {
@@ -258,6 +261,47 @@ describe('tools/call', () => {
     const result = await callTool('get_group', {});
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toBe('Error: boom');
+  });
+});
+
+describe('sign-in', () => {
+  const call = (client: Client, name: string) =>
+    client.callTool({ name, arguments: {} }) as Promise<ToolResult>;
+
+  it('does not sign in to list the tools', async () => {
+    const connect = vi.fn(async () => {});
+    await withClient((client) => client.listTools(), connect);
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it('signs in once, on the first tool call', async () => {
+    const connect = vi.fn(async () => {});
+    await withClient(async (client) => {
+      expect((await call(client, 'get_status')).isError).toBeFalsy();
+      expect((await call(client, 'list_groups')).isError).toBeFalsy();
+    }, connect);
+    expect(connect).toHaveBeenCalledOnce();
+  });
+
+  it('does not sign in for unknown tools', async () => {
+    const connect = vi.fn(async () => {});
+    await withClient((client) => call(client, 'nope'), connect);
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it('returns a failed sign-in as error and retries on the next call', async () => {
+    const connect = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('bad token'))
+      .mockResolvedValueOnce();
+    await withClient(async (client) => {
+      const failed = await call(client, 'get_status');
+      expect(failed.isError).toBe(true);
+      expect(failed.content[0]!.text).toBe('Error: Authentication failed: bad token');
+      expect(anton.getStatus).not.toHaveBeenCalled();
+      expect((await call(client, 'get_status')).isError).toBeFalsy();
+    }, connect);
+    expect(connect).toHaveBeenCalledTimes(2);
   });
 });
 

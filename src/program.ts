@@ -179,12 +179,8 @@ export function buildProgram(): Command {
     .description('Start the Anton MCP server over stdio')
     .action(async () => {
       const anton = loadAnton(program);
-      try {
-        await connectAnton(program, anton);
-      } catch (e) {
-        throw new CliError(`Authentication failed: ${(e as Error).message}`);
-      }
-      await startMcpServer(anton);
+      // Signs in on the first tool call, see createServer() in mcp.ts.
+      await startMcpServer(anton, () => connectAnton(program, anton));
     });
 
   // ── status ───────────────────────────────────────────────────────────────────

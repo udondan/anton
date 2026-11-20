@@ -52,12 +52,14 @@ Zusätzlich gibt es einen [Agent Skill](#agent-skill-für-ki-assistenten), der K
     - [Fortschritt & Analysen](#fortschritt--analysen)
     - [Aufgabenverwaltung](#aufgabenverwaltung)
     - [Globale Optionen](#globale-optionen)
+  - [Mit Docker](#mit-docker)
   - [Agent Skill für KI-Assistenten](#agent-skill-für-ki-assistenten)
     - [Skill installieren](#skill-installieren)
     - [Skill verwenden](#skill-verwenden)
 - [MCP-Server](#mcp-server)
   - [Einrichtung in Claude Code](#einrichtung-in-claude-code)
   - [Einrichtung in Claude Desktop](#einrichtung-in-claude-desktop)
+  - [Docker MCP Toolkit](#docker-mcp-toolkit)
   - [Anwendungsbeispiele mit Claude](#anwendungsbeispiele-mit-claude)
   - [Verfügbare MCP-Tools](#verfügbare-mcp-tools)
 - [Lizenz](#lizenz)
@@ -354,6 +356,24 @@ anton delete-assignment <id>
 anton --no-cache <befehl>   # Session-Cache überspringen, immer neu anmelden
 ```
 
+### Mit Docker
+
+Das Image [`udondan/anton`](https://hub.docker.com/r/udondan/anton) enthält das CLI. Argumente
+nach dem Image-Namen gehen an das CLI, `-e NAME` ohne Wert übernimmt die Variable aus der eigenen
+Shell. Das Volume `anton-data` behält lokale Aufgaben und den Session-Cache:
+
+```bash
+docker run --rm -e ANTON_LOGIN_CODE -v anton-data:/data udondan/anton status
+```
+
+Als Alias verhält sich das Image wie ein installiertes `anton`:
+
+```bash
+alias anton='docker run --rm -e ANTON_LOGIN_CODE -e ANTON_GROUP -v anton-data:/data udondan/anton'
+
+anton progress --child Emma
+```
+
 ### Agent Skill für KI-Assistenten
 
 Ein Skill, der KI-Assistenten beibringt, wie man alle `anton`-CLI-Befehle korrekt verwendet — inklusive Authentifizierung, Befehlssyntax, ID-Ermittlung und wöchentlicher Lernplanung pro Kind.
@@ -442,6 +462,58 @@ claude mcp add --scope project --env ANTON_LOGIN_CODE=DEIN-CODE anton -- npx @ud
   }
 }
 ```
+
+### Docker MCP Toolkit
+
+Mit dem [Docker MCP Toolkit](https://docs.docker.com/ai/mcp-catalog-and-toolkit/toolkit/) von
+Docker Desktop läuft der Server als Container hinter dem MCP Gateway. Das Gateway startet den
+Container bei Bedarf und reicht seine Tools an die verbundenen Clients weiter. Der Login-Code liegt
+als Secret in Docker Desktop statt im Klartext in der Client-Konfiguration. Lokale Aufgaben und
+der Session-Cache liegen im Docker-Volume `anton-data` und bleiben über Container-Starts erhalten.
+
+Voraussetzung ist Docker Desktop mit aktiviertem MCP Toolkit.
+
+1. Die Server-Definition [`docker-mcp.yml`](docker-mcp.yml) herunterladen und einem
+   Toolkit-Profil hinzufügen. Das Toolkit liest solche Dateien nur aus seinem Katalog-Verzeichnis:
+
+   ```bash
+   mkdir -p ~/.docker/mcp/catalogs
+   curl -fsSL https://raw.githubusercontent.com/udondan/anton/main/docker-mcp.yml -o ~/.docker/mcp/catalogs/anton.yml
+
+   # neues Profil "anton" ...
+   docker mcp profile create --name anton --id anton --server "file://$HOME/.docker/mcp/catalogs/anton.yml"
+   # ... oder einem bestehenden Profil hinzufügen
+   docker mcp profile server add default --server "file://$HOME/.docker/mcp/catalogs/anton.yml"
+   ```
+
+   Das Profil behält das Image in der Version, die es beim Hinzufügen hatte. Zum Aktualisieren
+   `profile server add` erneut ausführen.
+
+2. Den Login-Code als Secret hinterlegen:
+
+   ```bash
+   docker mcp secret set anton.login_code=DEIN-CODE
+   ```
+
+3. Einen Client mit dem Profil verbinden:
+
+   ```bash
+   docker mcp client connect claude-desktop --profile anton
+   ```
+
+   `docker mcp client connect --help` listet weitere Clients wie `claude-code`, `cursor` oder
+   `vscode`. Das geht auch in Docker Desktop unter _MCP Toolkit_.
+
+`docker mcp gateway run --profile anton --dry-run --verbose` prüft die Einrichtung, ohne einen
+Client zu starten. Die Ausgabe sollte die Zeile `anton: (24 tools)` enthalten.
+
+`ANTON_GROUP` gibt es im Toolkit nicht: Das Gateway setzt nicht hinterlegte Secrets auf
+`<UNKNOWN>`, eine optionale Gruppe würde also eine Gruppe dieses Namens auswählen. Bei mehreren
+Gruppen nimmt der Server die erste. Eine andere wählt Claude über den Parameter `group` der Tools,
+z. B. „Zeig mir den Fortschritt in der Gruppe Family".
+
+Der Server meldet sich erst beim ersten Tool-Aufruf bei anton.app an. Ein falscher Login-Code
+zeigt sich daher nicht beim Start, sondern als Fehler des ersten Tools.
 
 ### Anwendungsbeispiele mit Claude
 

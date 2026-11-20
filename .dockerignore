@@ -1,0 +1,11 @@
+.git/
+.github/
+.claude/
+docs/
+scripts/
+skills/
+node_modules/
+coverage/
+test/
+.env
+.env.*
