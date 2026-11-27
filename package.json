@@ -54,6 +54,7 @@
     "pretest:coverage": "tsc",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ test/",
+    "lint:tools": "tdqs lint --command \"node dist/cli.js mcp\" --server-name anton --fail-on warning",
     "lint:fix": "eslint --fix src/ test/",
     "format": "prettier --write src/ test/"
   },
@@ -73,6 +74,7 @@
     "eslint": "10.15.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.7",
+    "mcp-tdqs": "0.2.0",
     "prettier": "3.10.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.74.0",

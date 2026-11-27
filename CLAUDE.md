@@ -75,6 +75,8 @@ filter, or the tests silently skip. `docker` only runs on pull requests and only
 passed; it builds the image and runs the CLI in it without network, so it never reaches anton.app
 (`anton mcp` starts without credentials and signs in on the first tool call, so the job lists the
 tools and checks that a tool call reports the missing credentials).
+`test` also lints the tool descriptions of the MCP server with `bun run lint:tools` (mcp-tdqs,
+the deterministic checks of Glama's Tool Definition Quality Score); warnings fail it.
 `actions` (actionlint, zizmor) and `qlty` always run.
 
 ## Configuration

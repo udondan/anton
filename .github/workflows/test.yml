@@ -109,6 +109,17 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      # Lints the tool descriptions the MCP server lists with the deterministic
+      # checks of Glama's Tool Definition Quality Score (TDQS). Warnings fail
+      # the step, notes only go into the summary.
+      - name: Lint the MCP tool descriptions
+        run: |
+          status=0
+          bun run lint:tools --format markdown --output tdqs.md || status=$?
+          cat tdqs.md
+          cat tdqs.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
       - name: Test
         run: bun run test:coverage
         env:
