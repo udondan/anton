@@ -293,17 +293,32 @@ describe('session cache', () => {
 // ---------------------------------------------------------------------------
 
 describe('mcp', () => {
-  it('connects and starts the MCP server', async () => {
+  it('starts the MCP server without signing in', async () => {
     expect(await main(['mcp'])).toBe(0);
-    expect(startMcpServer).toHaveBeenCalledWith(lastAnton());
+    expect(startMcpServer).toHaveBeenCalledWith(lastAnton(), expect.any(Function));
+    expect(lastAnton().connect).not.toHaveBeenCalled();
   });
 
-  it('fails with a clear message when authentication fails', async () => {
+  it('passes a connect function that signs in', async () => {
+    await main(['mcp']);
+    const connect = vi.mocked(startMcpServer).mock.calls[0]![1]!;
+    await connect();
+    expect(lastAnton().connect).toHaveBeenCalledOnce();
+  });
+
+  it('starts without credentials and reports them missing on connect', async () => {
+    delete process.env['ANTON_LOGIN_CODE'];
+    expect(await main(['mcp'])).toBe(0);
+    const connect = vi.mocked(startMcpServer).mock.calls[0]![1]!;
+    await expect(connect()).rejects.toThrow('No credentials configured');
+    expect(lastAnton().connect).not.toHaveBeenCalled();
+  });
+
+  it('passes on a failed sign-in to the MCP server', async () => {
     onNextAnton((a) => a.connect!.mockRejectedValue(new Error('bad token')));
-    expect(await main(['mcp'])).toBe(1);
-    expect(stderr.join('')).toContain('Authentication failed: bad token');
-    expect(stderr.join('')).not.toContain('--no-cache');
-    expect(startMcpServer).not.toHaveBeenCalled();
+    expect(await main(['mcp'])).toBe(0);
+    const connect = vi.mocked(startMcpServer).mock.calls[0]![1]!;
+    await expect(connect()).rejects.toThrow('bad token');
   });
 });
 

@@ -73,7 +73,8 @@ and run only the offline tests. On pull requests the `changes` job (`dorny/paths
 whether the tests run; when the code or the build starts depending on another file, add it to that
 filter, or the tests silently skip. `docker` only runs on pull requests and only if `test`
 passed; it builds the image and runs the CLI in it without network, so it never reaches anton.app
-(`anton mcp` logs in at startup, so the MCP server is only checked up to the missing credentials).
+(`anton mcp` starts without credentials and signs in on the first tool call, so the job lists the
+tools and checks that a tool call reports the missing credentials).
 `actions` (actionlint, zizmor) and `qlty` always run.
 
 ## Configuration

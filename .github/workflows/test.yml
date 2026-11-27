@@ -275,8 +275,8 @@ jobs:
         run: ./mcp-publisher validate
 
   # Builds the image and runs the CLI in it without network access, so nothing
-  # reaches anton.app. `anton mcp` logs in before it serves any tool, so the
-  # MCP server is only checked up to the missing credentials. The local
+  # reaches anton.app. `anton mcp` starts and lists its tools without
+  # credentials and only checks them on the first tool call. The local
   # assignment commands need no login and show that a volume on
   # ~/.config/anton is writable for the user of the image. Only runs if the
   # tests passed, which also means code or the image changed.
@@ -313,17 +313,19 @@ jobs:
           docker run --rm --network none udondan/anton --version
           docker run --rm --network none udondan/anton --help
 
+      # Initializes the MCP server, lists its tools and calls one, which has to
+      # report the missing credentials. stdin ends after the last request, which
+      # stops the server.
       - name: Start the MCP server without credentials
         run: |
-          set +e
-          docker run --rm --network none udondan/anton 2>&1 | tee mcp.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [[ "$status" != 1 ]]; then
-            echo "::error::expected exit code 1 without credentials, got $status"
-            exit 1
-          fi
-          grep -F "No credentials configured" mcp.log
+          {
+            echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}'
+            echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+            echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+            echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_status","arguments":{}}}'
+          } | timeout 60 docker run -i --rm --network none udondan/anton | tee mcp.jsonl
+          jq -es 'map(select(.id == 2)) | .[0].result.tools | length > 0' mcp.jsonl
+          jq -es 'map(select(.id == 3)) | .[0].result | .isError and (.content[0].text | contains("No credentials configured"))' mcp.jsonl
 
       - name: Keep local assignments in a volume
         run: |
