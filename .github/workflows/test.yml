@@ -70,6 +70,9 @@ jobs:
               - eslint.config.js
               - .prettierrc.json
               - vitest.config.ts
+              - Dockerfile
+              - .dockerignore
+              - docker-mcp.yml
               - .github/workflows/test.yml
 
   test:
@@ -271,9 +274,69 @@ jobs:
       - name: Validate server.json
         run: ./mcp-publisher validate
 
+  # Builds the image and runs the CLI in it without network access, so nothing
+  # reaches anton.app. `anton mcp` logs in before it serves any tool, so the
+  # MCP server is only checked up to the missing credentials. The local
+  # assignment commands need no login and show that a volume on
+  # ~/.config/anton is writable for the user of the image. Only runs if the
+  # tests passed, which also means code or the image changed.
+  docker:
+    name: Docker
+    needs: [boarding-gate, test]
+    # !cancelled(): boarding-gate is skipped for forks.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.test.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check turn
+        if: needs.boarding-gate.result == 'failure' || needs.boarding-gate.result == 'cancelled'
+        run: exit 1
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js and Bun
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          install_args: node bun # versions from mise.toml
+
+      # Strict install from the lock file before docker-build compiles dist/.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - run: mise run docker-build
+
+      - name: Run the CLI in the image
+        run: |
+          docker run --rm --network none udondan/anton --version
+          docker run --rm --network none udondan/anton --help
+
+      - name: Start the MCP server without credentials
+        run: |
+          set +e
+          docker run --rm --network none udondan/anton 2>&1 | tee mcp.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" != 1 ]]; then
+            echo "::error::expected exit code 1 without credentials, got $status"
+            exit 1
+          fi
+          grep -F "No credentials configured" mcp.log
+
+      - name: Keep local assignments in a volume
+        run: |
+          docker volume create anton-ci
+          docker run --rm --network none -v anton-ci:/home/node/.config/anton udondan/anton \
+            assign Test c-mat-4/ci --title CI
+          docker run --rm --network none -v anton-ci:/home/node/.config/anton udondan/anton \
+            assignments --child Test | tee assignments.json
+          jq -e 'length == 1 and .[0].fileId == "c-mat-4/ci"' assignments.json
+
   # The only test check the ruleset requires, whatever jobs are added later.
   required:
-    needs: [boarding-gate, changes, test, coverage, actions, qlty, mcp-registry]
+    needs: [boarding-gate, changes, test, coverage, actions, qlty, mcp-registry, docker]
     if: always()
     runs-on: ubuntu-latest
     steps:

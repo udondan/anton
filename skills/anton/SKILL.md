@@ -27,6 +27,12 @@ npm install -g @udondan/anton
 
 If the `anton` command is not found, suggest the global install above. As a one-off fallback without installing, `npx @udondan/anton <command>` works but is slower.
 
+Without Node.js, the Docker image `udondan/anton` runs the same CLI. The volume keeps the session cache and local assignments between runs:
+
+```bash
+docker run --rm -e ANTON_LOGIN_CODE -e ANTON_GROUP -v anton:/home/node/.config/anton udondan/anton <command>
+```
+
 All output is JSON printed to stdout — pipe to `jq` to filter or extract fields:
 
 ```bash

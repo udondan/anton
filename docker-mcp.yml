@@ -1,0 +1,12 @@
+# Server definition for the Docker MCP Toolkit.
+# Add it to a profile with `mise run docker-register` (see README, section Docker MCP Toolkit).
+name: anton
+type: server
+image: udondan/anton:latest
+title: anton (unofficial)
+description: Unofficial, not affiliated with solocode GmbH. Children's learning progress, lessons and assignments on anton.app for parents
+secrets:
+  - name: anton.login_code
+    env: ANTON_LOGIN_CODE
+    example: your_login_code
+    description: 8-character parent login code from the anton app
