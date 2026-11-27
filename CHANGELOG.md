@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/udondan/anton/compare/v1.4.8...v1.5.0) (2026-11-27)
+
+
+### Features
+
+* publish a Docker image ([#164](https://github.com/udondan/anton/issues/164)) ([7bb7501](https://github.com/udondan/anton/commit/7bb75019b5169d943a11b77af05891ff787a8258))
+* publish the MCP server to the MCP Registry ([#161](https://github.com/udondan/anton/issues/161)) ([e6dae93](https://github.com/udondan/anton/commit/e6dae93cc1ce7fbbb79a134d99a6b92d3515ea5d))
+
 ## [1.4.8](https://github.com/udondan/anton/compare/v1.4.7...v1.4.8) (2026-11-16)
 
 
