@@ -334,7 +334,7 @@ const TOOLS: Tool[] = [
     name: 'get_topic_blocks',
     title: 'Topic blocks',
     description:
-      'Returns the blocks of one topic of a course, each with title, PUID, block path and its levels (title, PUID, slug): everything pin_block needs, and the parts of the file id that get_lesson takes. Identify the topic by topicIndex from list_topics or by part of its title. Much smaller than get_plan.',
+      'Returns the blocks of one topic of a course, each with title, PUID, block path and its levels (title, PUID, type, and fileId where known): everything pin_block needs, and the fileId that get_lesson and assign_lesson take. Identify the topic by topicIndex from list_topics or by part of its title. Much smaller than get_plan.',
     annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
@@ -376,14 +376,15 @@ const TOOLS: Tool[] = [
     name: 'get_lesson',
     title: 'Lesson content',
     description:
-      'Returns the content of one lesson level: its questions, trainers and answer options. Takes the file id of the level, "{project}/{topic-slug}/{block-slug}/{level-slug}", built from the block path and the level slug that get_topic_blocks lists. Use it to see what a lesson asks; for how a child did on it use get_level_progress.',
+      'Returns the content of one lesson level: its questions, trainers and answer options. Takes the fileId of the level as get_topic_blocks lists it in levels[].fileId, like "level/...". Use it to see what a lesson asks; for how a child did on it use get_level_progress.',
     annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
         fileId: {
           type: 'string',
-          description: 'Level file path (with or without the "level/" prefix)',
+          description:
+            'File id of the level from get_topic_blocks (levels[].fileId), with or without the "level/" prefix',
         },
       },
       required: ['fileId'],
@@ -518,7 +519,7 @@ const TOOLS: Tool[] = [
         fileId: {
           type: 'string',
           description:
-            'File id of the lesson level, "{project}/{topic-slug}/{block-slug}/{level-slug}", as get_lesson takes it',
+            'File id of the lesson level, as get_topic_blocks lists it in levels[].fileId',
         },
         lessonTitle: { type: 'string', description: 'Human-readable lesson title (optional)' },
         note: { type: 'string', description: 'Optional note' },
