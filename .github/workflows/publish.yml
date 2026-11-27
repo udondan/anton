@@ -63,6 +63,27 @@ jobs:
             exit 1
           fi
 
+      # npm can take minutes to serve a new version, and the registry rejects
+      # a version it cannot find yet. Wait until npm serves it with mcpName.
+      - name: Wait for the npm package
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          name=$(jq -r .name server.json)
+          package=$(jq -r '.packages[0].identifier' server.json)
+          version=${TAG#v}
+          url="https://registry.npmjs.org/$(jq -rn --arg p "$package" '$p | @uri')/$version"
+          for _ in $(seq 30); do
+            if [[ "$(curl --fail --silent --location "$url" | jq -r .mcpName 2>/dev/null)" == "$name" ]]; then
+              echo "$package@$version is on npm"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::$package@$version with mcpName $name did not appear on npm within 15 minutes"
+          exit 1
+
       - name: Install cosign
         uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
 
