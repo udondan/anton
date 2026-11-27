@@ -1,6 +1,6 @@
 {
   "name": "@udondan/anton",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Unofficial SDK, CLI, and MCP server for anton.app — track children's learning progress, browse lessons, manage assignments",
   "repository": {
     "type": "git",
