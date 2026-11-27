@@ -39,9 +39,10 @@ const TOOLS: Tool[] = [
   // ── Status ───────────────────────────────────────────────────────────────
   {
     name: 'get_status',
+    title: 'Status',
     description:
-      'Show authentication and family group status. ' +
-      'Returns parent account info, all groups the parent belongs to, and pupils for the selected/default group.',
+      'Shows who is signed in and which family group is used: the parent account, all groups the parent belongs to, and the pupils of the selected group with their names and publicIds. Call it first to check the setup and to learn the child names that other tools take. For the members and pins of one group use get_group.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: { ...groupParam },
@@ -52,16 +53,18 @@ const TOOLS: Tool[] = [
   // ── Groups / Children ────────────────────────────────────────────────────
   {
     name: 'list_groups',
+    title: 'List groups',
     description:
-      'List all groups the parent account belongs to. ' +
-      'Returns each group with its name, type, and full member list (publicIds, roles, display names).',
+      'Lists every group the parent account belongs to, each with name, type and all members (publicId, role, display name). Use it when the parent has more than one group, to pick the `group` argument of the other tools; for one group with its pins use get_group.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: { type: 'object', properties: {}, required: [] },
   },
   {
     name: 'get_group',
+    title: 'Group',
     description:
-      'Get a family group details: name, type, members with their publicIds and roles. ' +
-      'Also shows current lesson assignments (pinned blocks) per member.',
+      'Shows one family group: name, type, members with publicIds and roles, and the blocks pinned for each member. Use it for an overview of who has what assigned; for the pins alone, filtered by child or week, use get_group_assignments.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: { ...groupParam },
@@ -70,10 +73,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_group_assignments',
+    title: 'Pinned blocks',
     description:
-      'List all lesson blocks currently assigned (pinned) in the family group. ' +
-      'Each entry shows: block PUID, block path (contains subject/grade/topic), ' +
-      'week, and optionally which child it is assigned to (subgroup = publicId).',
+      'Lists the lesson blocks pinned in the family group on anton.app: block PUID, block path (with subject, grade and topic), week, and the child it is pinned for (subgroup = publicId; none means the whole group). Filters by child and week. Use it to see what the children see as assigned in the app, and to find the blockPuid and week that unpin_block needs. Whether the blocks were done is in check_assignment_completion.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -83,7 +86,7 @@ const TOOLS: Tool[] = [
         },
         week: {
           type: 'string',
-          description: 'Filter to a specific week start date (YYYY-MM-DD Monday)',
+          description: 'Only the pins of the week that starts on this Monday, e.g. "2025-09-01"',
         },
         ...groupParam,
       },
@@ -92,12 +95,15 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'pin_block',
+    title: 'Pin a block',
     description:
-      'Assign a lesson block to the family group (or a specific child). ' +
-      'Posts a pinGroupBlock event to the group logger. ' +
-      'Block can be identified either by (project + topicIndex/topicTitle + blockIndex/blockTitle) ' +
-      'or directly by (blockPuid + blockPath). ' +
-      'Child can be identified by childName (configured name) or childPublicId.',
+      'Assigns a lesson block on anton.app: pins it for a week, for the whole family group or for one child, who then sees it in the app. Identify the block by project with topic and block (index or title), as list_topics and get_topic_blocks show them, or directly by blockPuid and blockPath. The week defaults to the current one. Pinning the same block again adds another pin. Returns the pin with groupCode, blockPuid, blockPath, weekStartAt and childPublicId. For a reminder that stays on this machine use assign_lesson instead.',
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
     inputSchema: {
       type: 'object',
       properties: {
@@ -154,9 +160,15 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'unpin_block',
+    title: 'Unpin a block',
     description:
-      'Remove a pinned block from the family group. ' +
-      'Use get_group_assignments to find the pin to remove — identify it by blockPuid and week.',
+      'Removes a pinned block from the family group on anton.app, so that the children no longer see it as assigned. Find the pin with get_group_assignments and pass its blockPuid and week; childPublicId picks one pin when several match. Fails if no pin matches. Returns the removed pin.',
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
     inputSchema: {
       type: 'object',
       properties: {
@@ -181,10 +193,10 @@ const TOOLS: Tool[] = [
   // ── Progress ─────────────────────────────────────────────────────────────
   {
     name: 'get_progress',
+    title: 'Progress',
     description:
-      'Get a learning progress summary for a child in the selected group. ' +
-      'Returns completed levels with scores, stars by subject, and event counts. ' +
-      'Use list_children to see available child names.',
+      'Summarizes the learning progress of one child: completed levels with scores, stars by subject, and the number of events, optionally since a date. Use it for a quick overview; for one week use get_weekly_summary, per subject get_subject_summary, for one level get_level_progress, and for the raw events get_events. Child names come from get_status or list_children.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -194,7 +206,7 @@ const TOOLS: Tool[] = [
         },
         since: {
           type: 'string',
-          description: 'ISO date to fetch events from (default: all time)',
+          description: 'Only events on or after this date, e.g. "2025-09-01". Default: all time.',
         },
         ...groupParam,
       },
@@ -203,9 +215,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_events',
+    title: 'Events',
     description:
-      'Fetch raw event log for a child in the selected group. ' +
-      'Events include: finishLevel, startLevel, setCurrentBlock, adjustCoins, etc.',
+      'Returns the raw event log of one child, newest first, like finishLevel, startLevel, setCurrentBlock or adjustCoins, each with its time and data. Filters by date and event name; at most `limit` events (default 100). Use it only when the summaries (get_progress, get_weekly_summary, get_activity_timeline) do not answer the question.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -215,11 +228,11 @@ const TOOLS: Tool[] = [
         },
         since: {
           type: 'string',
-          description: 'ISO date string (default: all time)',
+          description: 'Only events on or after this date, e.g. "2025-09-01". Default: all time.',
         },
         eventType: {
           type: 'string',
-          description: 'Filter to only events with this event name',
+          description: 'Only events of this name, e.g. "finishLevel"',
         },
         limit: {
           type: 'number',
@@ -232,10 +245,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_level_progress',
+    title: 'Level result',
     description:
-      "Get a child's detailed performance on a specific lesson level, by publicId. " +
-      'Returns score events, finishLevel data, duration, etc. ' +
-      'Uses the reviewReport endpoint — works even without a child login code.',
+      'Shows how one child did on one lesson level: score events, the finishLevel data and the time spent. Takes the level PUID from get_plan or get_topic_blocks (levels[].puid), not a block PUID. Works without a login code of the child, through the review report of the parent. For all levels of a block use check_assignment_completion.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -263,9 +276,10 @@ const TOOLS: Tool[] = [
   // ── Lesson catalogue ─────────────────────────────────────────────────────
   {
     name: 'list_children',
+    title: 'List children',
     description:
-      'List pupil members of the selected group and any available child session info. ' +
-      'Results may include children without login codes.',
+      'Lists the pupils of the selected group with name and publicId, and the child sessions available, if any. Children without a login code are listed too. Use it to find the childName or childPublicId that other tools take; get_status shows the same pupils along with the account.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: { ...groupParam },
@@ -274,10 +288,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'list_plans',
+    title: 'List courses',
     description:
-      'List all available Anton courses (plans) from the content catalogue. ' +
-      'Returns ~285 plans with subject, grades, title, block/level counts. ' +
-      'Use the "project" field (e.g. "c-mat-4") to fetch full hierarchy with get_plan.',
+      'Lists the courses (plans) of the anton.app catalogue, about 285, each with project id, subject, grades, title and the number of blocks and levels. Filters by subject, grade and language. Start here to find a course; then list_topics with its `project` (like c-mat-4) to browse it.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -301,9 +315,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'list_topics',
+    title: 'List topics',
     description:
-      'List the topics (chapters) of a course without fetching all blocks and levels. ' +
-      'Returns topic titles and their indices — use these with get_topic_blocks to drill down.',
+      'Lists the topics (chapters) of one course with their titles and 0-based indices, without blocks and levels. Use it after list_plans to browse a course; then get_topic_blocks with the index or title for the blocks of one topic.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -317,11 +332,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_topic_blocks',
+    title: 'Topic blocks',
     description:
-      'Fetch all blocks (and their levels) for a single topic within a course. ' +
-      'Much lighter than get_plan. Returns block titles, puids, blockPaths, and levels — ' +
-      'everything needed to call pin_block. ' +
-      'Identify the topic with topicIndex (0-based) from list_topics, or topicTitle (partial match).',
+      'Returns the blocks of one topic of a course, each with title, PUID, block path and its levels (title, PUID, slug): everything pin_block needs, and the parts of the file id that get_lesson takes. Identify the topic by topicIndex from list_topics or by part of its title. Much smaller than get_plan.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -343,11 +357,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_plan',
+    title: 'Course',
     description:
-      'Fetch the full topic → block → level hierarchy for a course. ' +
-      'WARNING: large courses (e.g. c-mat-3 with 84 blocks) produce very large responses. ' +
-      'Prefer list_topics + get_topic_blocks for browsing. ' +
-      'Use get_plan only when you need the complete picture of a course at once.',
+      'Returns the whole topic, block and level tree of one course. Large courses give very large results (c-mat-3 has 84 blocks), so prefer list_topics and get_topic_blocks for browsing, and use get_plan only when the whole course is needed at once.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -361,9 +374,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_lesson',
+    title: 'Lesson content',
     description:
-      'Fetch the content of a specific lesson level (questions, trainers, answer options). ' +
-      'The fileId is the level path: "{project}/{topic-slug}/{block-slug}/{level-slug}".',
+      'Returns the content of one lesson level: its questions, trainers and answer options. Takes the file id of the level, "{project}/{topic-slug}/{block-slug}/{level-slug}", built from the block path and the level slug that get_topic_blocks lists. Use it to see what a lesson asks; for how a child did on it use get_level_progress.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -379,10 +393,10 @@ const TOOLS: Tool[] = [
   // ── Analysis ─────────────────────────────────────────────────────────────
   {
     name: 'check_assignment_completion',
+    title: 'Pins done',
     description:
-      'Check which assigned lesson blocks a child has completed. ' +
-      "Cross-references pinned group assignments with the child's finishLevel events. " +
-      'Returns per-block breakdown: levels completed vs total, completion rate, and per-level scores.',
+      'Checks which blocks pinned for a child were done: it compares the pins of the group with the finishLevel events of the child. Returns for each block the levels done out of all, the rate, and the score of each level. Filters by week. Use it to follow up on pin_block; for all activity of a week use get_weekly_summary.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -398,9 +412,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_weekly_summary',
+    title: 'Weekly summary',
     description:
-      "Get a rollup of a child's learning activity for a specific week: " +
-      'levels completed, time spent, stars earned, subjects, and assigned vs self-directed ratio.',
+      'Summarizes one week of a child: levels completed, time spent, stars earned, subjects, and how much was pinned versus chosen by the child. The week defaults to the current one. For several weeks use get_activity_timeline; for subjects over all time get_subject_summary.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -416,9 +431,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_subject_summary',
+    title: 'Subjects',
     description:
-      "Aggregate a child's progress per subject: accuracy, stars, time spent, and trend " +
-      '(improving/declining/stable based on recent vs prior sessions).',
+      'Summarizes the progress of a child per subject: accuracy, stars, time spent, and a trend (improving, declining or stable) from recent against earlier sessions. Filters by subject prefix like mat. Use it to find strong and weak subjects; for one week use get_weekly_summary.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -434,9 +450,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'get_activity_timeline',
+    title: 'Activity timeline',
     description:
-      'Chronological activity summary for a child: active days, streaks, gaps, ' +
-      'daily breakdown of levels completed and time spent.',
+      'Shows when a child learned: active days, streaks, gaps, and for each day the levels completed and the time spent, optionally since a date. Use it to see how regularly a child learns; for the content of one week use get_weekly_summary.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -452,9 +469,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'compare_children',
+    title: 'Compare children',
     description:
-      'Side-by-side comparison of all children in the selected group: ' +
-      'total stars, accuracy, time spent, active days, levels completed, and subjects covered.',
+      'Compares all children of the selected group side by side: total stars, accuracy, time spent, active days, levels completed and subjects. Takes no child name. For the details of one child use get_progress or get_subject_summary.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: { ...groupParam },
@@ -465,9 +483,10 @@ const TOOLS: Tool[] = [
   // ── Local assignments ─────────────────────────────────────────────────────
   {
     name: 'list_assignments',
+    title: 'List local assignments',
     description:
-      'List local lesson assignments (stored by default in ~/.config/anton/assignments.json; ' +
-      'override with ANTON_ASSIGNMENTS_FILE).',
+      'Lists the local lesson assignments: notes kept on this machine, in ~/.config/anton/assignments.json or the file of ANTON_ASSIGNMENTS_FILE, which the child does not see in the app. Each has id, childName, fileId, title, note, status (pending, completed or cancelled) and dates. Filters by child and status. For the blocks pinned on anton.app use get_group_assignments.',
+    annotations: { readOnlyHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -483,12 +502,24 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'assign_lesson',
-    description: 'Create a local lesson assignment for a child.',
+    title: 'Add a local assignment',
+    description:
+      'Adds a local lesson assignment for a child to the file on this machine, with status pending. It is not sent to anton.app, so the child does not see it; to assign a block in the app use pin_block. Returns the new assignment with its id, which update_assignment and delete_assignment take.',
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
     inputSchema: {
       type: 'object',
       properties: {
-        childName: { type: 'string', description: 'Child name or publicId' },
-        fileId: { type: 'string', description: 'Lesson fileId' },
+        childName: { type: 'string', description: 'Child name as configured, or publicId' },
+        fileId: {
+          type: 'string',
+          description:
+            'File id of the lesson level, "{project}/{topic-slug}/{block-slug}/{level-slug}", as get_lesson takes it',
+        },
         lessonTitle: { type: 'string', description: 'Human-readable lesson title (optional)' },
         note: { type: 'string', description: 'Optional note' },
       },
@@ -497,28 +528,44 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'update_assignment',
-    description: 'Update an existing local assignment (status, note).',
+    title: 'Update a local assignment',
+    description:
+      'Changes the status (pending, completed or cancelled) or the note of a local assignment, found by its id from list_assignments. Setting completed records the time; other statuses clear it. Fails if the id is unknown. Returns the updated assignment. Does not touch anton.app.',
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: 'Assignment UUID' },
+        id: { type: 'string', description: 'Id (UUID) of the assignment, from list_assignments' },
         status: {
           type: 'string',
           enum: ['pending', 'completed', 'cancelled'],
-          description: 'New status',
+          description: 'New status. Omit to keep it.',
         },
-        note: { type: 'string', description: 'Updated note' },
+        note: { type: 'string', description: 'New note, replacing the old one. Omit to keep it.' },
       },
       required: ['id'],
     },
   },
   {
     name: 'delete_assignment',
-    description: 'Delete a local assignment.',
+    title: 'Delete a local assignment',
+    description:
+      'Deletes a local assignment for good, found by its id from list_assignments. Fails if the id is unknown. Returns {deleted: true, id}. Does not touch anton.app; to remove a pin there use unpin_block. To keep the record, set its status to cancelled with update_assignment instead.',
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: 'Assignment UUID' },
+        id: { type: 'string', description: 'Id (UUID) of the assignment, from list_assignments' },
       },
       required: ['id'],
     },
