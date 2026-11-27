@@ -648,10 +648,29 @@ export function buildToolHandlers(anton: Anton): Record<string, ToolHandler> {
 // Server bootstrap
 // ---------------------------------------------------------------------------
 
-/** Build the MCP server with all tools, without connecting a transport. */
-export function createServer(anton: Anton): McpServer {
+/**
+ * Build the MCP server with all tools, without connecting a transport.
+ *
+ * `connect` signs in to anton.app. It runs on the first tool call, not at
+ * startup, so the server starts and lists its tools without credentials, as
+ * the Docker MCP Gateway does when it checks a server. A failed sign-in is
+ * returned as the tool's error and retried on the next call.
+ */
+export function createServer(
+  anton: Anton,
+  connect: () => Promise<void> = async () => {},
+): McpServer {
   const mcp = new McpServer({ name: 'anton', version }, { capabilities: { tools: {} } });
   const handlers = buildToolHandlers(anton);
+
+  let connecting: Promise<void> | undefined;
+  const ensureConnected = (): Promise<void> => {
+    connecting ??= connect().catch((err: unknown) => {
+      connecting = undefined;
+      throw new Error(`Authentication failed: ${(err as Error).message}`);
+    });
+    return connecting;
+  };
 
   // The tools are declared with plain JSON schemas, so they are served through
   // the low-level request handlers instead of McpServer.registerTool().
@@ -659,10 +678,10 @@ export function createServer(anton: Anton): McpServer {
 
   mcp.server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args = {} } = request.params;
-
     try {
       // Object.hasOwn: inherited names such as "constructor" are not tools.
       if (!Object.hasOwn(handlers, name)) throw new Error(`Unknown tool: ${name}`);
+      await ensureConnected();
       const result: unknown = await handlers[name](args, optStr(args, 'group'));
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -678,7 +697,7 @@ export function createServer(anton: Anton): McpServer {
   return mcp;
 }
 
-/** Start the MCP server over stdio. */
-export async function startMcpServer(anton: Anton): Promise<void> {
-  await createServer(anton).connect(new StdioServerTransport());
+/** Start the MCP server over stdio. See createServer() for `connect`. */
+export async function startMcpServer(anton: Anton, connect?: () => Promise<void>): Promise<void> {
+  await createServer(anton, connect).connect(new StdioServerTransport());
 }

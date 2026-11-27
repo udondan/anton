@@ -41,7 +41,7 @@
 
 import { createRequire } from 'node:module';
 import { Command, CommanderError, Option } from 'commander';
-import { Anton } from './Anton.js';
+import { Anton, type AntonConfig } from './Anton.js';
 import {
   createAssignment,
   deleteAssignment,
@@ -71,19 +71,28 @@ function err(msg: string): void {
 /** An expected CLI failure: main() prints the message and returns exit code 1. */
 class CliError extends Error {}
 
-function loadAnton(program: Command): Anton {
-  const loginCode = process.env.ANTON_LOGIN_CODE;
-  const logId = process.env.ANTON_LOG_ID;
+function antonConfig(program: Command): AntonConfig {
   // Global --group flag takes precedence over ANTON_GROUP env var.
   const groupName = program.opts<{ group?: string }>().group ?? process.env.ANTON_GROUP;
+  return {
+    loginCode: process.env.ANTON_LOGIN_CODE,
+    logId: process.env.ANTON_LOG_ID,
+    groupName,
+  };
+}
 
-  if (!loginCode && !logId) {
+function requireCredentials(config: AntonConfig): void {
+  if (!config.loginCode && !config.logId) {
     throw new CliError(
       'No credentials configured. Set ANTON_LOGIN_CODE=<code> or ANTON_LOG_ID=<id>.',
     );
   }
+}
 
-  return new Anton({ loginCode, logId, groupName });
+function loadAnton(program: Command): Anton {
+  const config = antonConfig(program);
+  requireCredentials(config);
+  return new Anton(config);
 }
 
 /**
@@ -178,13 +187,14 @@ export function buildProgram(): Command {
     .command('mcp')
     .description('Start the Anton MCP server over stdio')
     .action(async () => {
-      const anton = loadAnton(program);
-      try {
+      // The server starts and lists its tools without credentials. The first
+      // tool call checks them and signs in, see createServer() in mcp.ts.
+      const config = antonConfig(program);
+      const anton = new Anton(config);
+      await startMcpServer(anton, async () => {
+        requireCredentials(config);
         await connectAnton(program, anton);
-      } catch (e) {
-        throw new CliError(`Authentication failed: ${(e as Error).message}`);
-      }
-      await startMcpServer(anton);
+      });
     });
 
   // ── status ───────────────────────────────────────────────────────────────────
