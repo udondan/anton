@@ -1,0 +1,12 @@
+.git/
+.github/
+.claude/
+.qlty/
+node_modules/
+coverage/
+test/
+docs/
+scripts/
+skills/
+.env
+.env.*

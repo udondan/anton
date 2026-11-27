@@ -1,7 +1,8 @@
 [tools]
 # Runtime and package manager. The only place for these versions: the workflows
-# install them with jdx/mise-action.
-node = "lts"
+# install them with jdx/mise-action. Node stays on the same major as the Docker
+# base image, Bun on the version of the Bun image in the Dockerfile.
+node = "26"
 bun = "1.4.5"
 # Linters for the actions job in test.yml, which installs only these.
 actionlint = "1.7.12"
@@ -44,3 +45,31 @@ run = "bun run lint:fix"
 [tasks.format]
 description = "Format src/ and test/ with Prettier"
 run = "bun run format"
+
+# ── Docker tasks ─────────────────────────────────────────────────────────────
+
+[tasks.docker-build]
+description = "Build the Docker image"
+run = "docker build -t udondan/anton ."
+# The image takes the compiled dist/, it doesn't compile TypeScript itself.
+depends = ["build"]
+
+[tasks.docker-register]
+description = "Add the server to a Docker MCP Toolkit profile (created if missing)"
+usage = 'arg "[profile]" default="anton" help="Profile ID"'
+# docker mcp only reads server files from its catalogs directory.
+run = """
+catalogs="$HOME/.docker/mcp/catalogs"
+mkdir -p "$catalogs"
+cp docker-mcp.yml "$catalogs/anton.yml"
+server="file://$catalogs/anton.yml"
+if docker mcp profile show "$usage_profile" >/dev/null 2>&1; then
+  docker mcp profile server add "$usage_profile" --server "$server"
+else
+  docker mcp profile create --name "$usage_profile" --id "$usage_profile" --server "$server"
+fi
+"""
+
+[tasks.docker]
+description = "Build the image and add it to a Docker MCP Toolkit profile"
+depends = ["docker-build", "docker-register"]

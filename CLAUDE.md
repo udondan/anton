@@ -21,7 +21,21 @@ mise run test              # run all tests (vitest)
 mise run test:coverage     # run all tests with coverage (100 % required)
 mise run test:watch        # vitest in watch mode
 bun run test test/sdk.test.ts   # run a single test file
+
+# Docker image
+mise run docker-build                # docker build -t udondan/anton . (compiles dist/ first)
+mise run docker-register [profile]   # add to a Docker MCP Toolkit profile (default: anton)
+mise run docker                      # both
 ```
+
+The local `udondan/anton:latest` takes the place of the public image, so the Docker MCP Toolkit
+runs the local build. `docker pull udondan/anton` switches back.
+
+Releases (`publish.yml`) publish the npm package and push the Docker image `udondan/anton` (amd64
+and arm64, tags `x.y.z`, `x.y`, `x`, `latest`, signed with cosign) with an access token from the
+GitHub environment `docker-hub` (`DOCKERHUB_USERNAME` variable, `DOCKERHUB_TOKEN` secret). The
+image runs as the `node` user (UID 1000); its `~/.config/anton` (config file, session cache, local
+assignments) is `/home/node/.config/anton`, where users mount a volume.
 
 The unit tests in `test/unit/` (plus `test/client.test.ts`, `test/config-file.test.ts`) run offline
 with mocked HTTP and must cover every line, branch and function of `src/` on their own — the
@@ -49,14 +63,18 @@ to GitHub's dependency graph on every change on main, and Dependabot reports the
 
 ### CI
 
-Node.js and Bun versions are pinned only in `mise.toml`; the workflows install them with
-`jdx/mise-action` (tool cache on in `test.yml`, off in `publish.yml`). Every job in `test.yml`
+Node.js and Bun versions are pinned only in `mise.toml` (Node on the same major as the Docker
+base image, Bun on the version of the Bun image in the `Dockerfile`); the workflows install them
+with `jdx/mise-action` (tool cache on in `test.yml`, off in `publish.yml`). Every job in `test.yml`
 except `required` waits for boarding-gate (job `Queue`, one run at a time because the live tests
 share one anton.app account) and fails if it failed: while another run holds the turn, the branch
 likely needs a rebase anyway, so nothing runs in parallel. Pull requests from forks skip the wait
 and run only the offline tests. On pull requests the `changes` job (`dorny/paths-filter`) decides
 whether the tests run; when the code or the build starts depending on another file, add it to that
-filter, or the tests silently skip. `actions` (actionlint, zizmor) and `qlty` always run.
+filter, or the tests silently skip. `docker` only runs on pull requests and only if `test`
+passed; it builds the image and runs the CLI in it without network, so it never reaches anton.app
+(`anton mcp` logs in at startup, so the MCP server is only checked up to the missing credentials).
+`actions` (actionlint, zizmor) and `qlty` always run.
 
 ## Configuration
 

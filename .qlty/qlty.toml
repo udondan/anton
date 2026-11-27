@@ -79,6 +79,23 @@ name = "gitleaks"
 [[plugin]]
 name = "trufflehog"
 
+# Dockerfile checks.
+[[plugin]]
+name = "hadolint"
+
+# The Docker MCP Toolkit expects exactly these label keys (com.docker.desktop.mcp*).
+[[triage]]
+match.rules = ["hadolint:DL3048"]
+match.file_patterns = ["Dockerfile"]
+set.ignored = true
+
+# The image runs a stdio MCP server or the CLI. There is no port or process a
+# HEALTHCHECK could probe.
+[[triage]]
+match.rules = ["trivy:DS-0026"]
+match.file_patterns = ["Dockerfile"]
+set.ignored = true
+
 # `(string & {})` keeps editor completion for the known roles while still
 # accepting any string the API may return.
 [[triage]]

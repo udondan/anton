@@ -1,13 +1,14 @@
 # @udondan/anton
 
-![anton – SDK / CLI / MCP / Agent Skill](docs/banner.webp)
+![anton – SDK / CLI / MCP / Agent Skill](https://raw.githubusercontent.com/udondan/anton/main/docs/banner.webp)
 
 [![npm](https://img.shields.io/npm/v/@udondan/anton)](https://www.npmjs.com/package/@udondan/anton)
+[![Docker](https://img.shields.io/docker/v/udondan/anton?sort=semver&label=docker)](https://hub.docker.com/r/udondan/anton)
 [![Node.js](https://img.shields.io/node/v/@udondan/anton)](https://www.npmjs.com/package/@udondan/anton)
 [![CI](https://github.com/udondan/anton/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/udondan/anton/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/udondan/anton/graph/badge.svg)](https://codecov.io/gh/udondan/anton)
 [![Maintainability](https://qlty.sh/gh/udondan/projects/anton/maintainability.svg)][qlty]
-[![License](https://img.shields.io/github/license/udondan/anton)](LICENSE)
+[![License](https://img.shields.io/github/license/udondan/anton)](https://github.com/udondan/anton/blob/main/LICENSE)
 
 > [!NOTE]
 > Inoffizielles Community-Projekt. Nicht mit der solocode GmbH (Anbieter von ANTON) verbunden, nicht von ihr unterstützt oder autorisiert.
@@ -52,12 +53,14 @@ Zusätzlich gibt es einen [Agent Skill](#agent-skill-für-ki-assistenten), der K
     - [Fortschritt & Analysen](#fortschritt--analysen)
     - [Aufgabenverwaltung](#aufgabenverwaltung)
     - [Globale Optionen](#globale-optionen)
+  - [Mit Docker](#mit-docker)
   - [Agent Skill für KI-Assistenten](#agent-skill-für-ki-assistenten)
     - [Skill installieren](#skill-installieren)
     - [Skill verwenden](#skill-verwenden)
 - [MCP-Server](#mcp-server)
   - [Einrichtung in Claude Code](#einrichtung-in-claude-code)
   - [Einrichtung in Claude Desktop](#einrichtung-in-claude-desktop)
+  - [Docker MCP Toolkit](#docker-mcp-toolkit)
   - [Anwendungsbeispiele mit Claude](#anwendungsbeispiele-mit-claude)
   - [Verfügbare MCP-Tools](#verfügbare-mcp-tools)
 - [Lizenz](#lizenz)
@@ -72,6 +75,10 @@ npm install -g @udondan/anton
 # Ohne Installation direkt nutzen
 ANTON_LOGIN_CODE=DEIN-CODE npx @udondan/anton status
 ```
+
+CLI und MCP-Server gibt es auch als Docker-Image
+[`udondan/anton`](https://hub.docker.com/r/udondan/anton) (amd64 und arm64),
+ohne dass Node.js installiert sein muss. Siehe [Mit Docker](#mit-docker).
 
 ## Konfiguration
 
@@ -354,6 +361,32 @@ anton delete-assignment <id>
 anton --no-cache <befehl>   # Session-Cache überspringen, immer neu anmelden
 ```
 
+### Mit Docker
+
+Argumente nach dem Image-Namen gehen an das CLI. `-e NAME` ohne Wert übernimmt
+die Variable aus der eigenen Shell:
+
+```bash
+docker run --rm -e ANTON_LOGIN_CODE -e ANTON_GROUP udondan/anton status
+```
+
+Config-Datei, Session-Cache und lokale Aufgaben liegen im Container unter
+`/home/node/.config/anton` und gehen mit dem Container verloren. Ein Volume an
+dieser Stelle behält sie, z. B. das benannte Volume `anton`:
+
+```bash
+alias anton='docker run --rm -e ANTON_LOGIN_CODE -e ANTON_GROUP -v anton:/home/node/.config/anton udondan/anton'
+
+anton status
+anton assignments --child Emma
+```
+
+Statt des benannten Volumes lässt sich auch `~/.config/anton` vom Host einbinden
+(`-v ~/.config/anton:/home/node/.config/anton`). Der Container läuft als
+Benutzer mit der UID 1000; unter Linux muss ihm das Verzeichnis gehören.
+`ANTON_ASSIGNMENTS_FILE` ist ein Pfad im Container, z. B. eine Datei in einem
+eingebundenen Verzeichnis.
+
 ### Agent Skill für KI-Assistenten
 
 Ein Skill, der KI-Assistenten beibringt, wie man alle `anton`-CLI-Befehle korrekt verwendet — inklusive Authentifizierung, Befehlssyntax, ID-Ermittlung und wöchentlicher Lernplanung pro Kind.
@@ -390,6 +423,14 @@ Der MCP-Server stellt alle 24 Tools über stdio bereit und ermöglicht KI-Assist
 > **Alternative ohne MCP:** KI-Assistenten mit Terminalzugriff können direkt die CLI nutzen. Der [Agent Skill](#agent-skill-für-ki-assistenten) bringt ihnen die Befehle bei.
 
 In der [MCP Registry](https://registry.modelcontextprotocol.io/) ist der Server als `io.github.udondan/anton` gelistet.
+
+Als Docker-Image startet er ohne Argumente. `-i` hält stdin offen, über das der
+Server mit dem Client spricht; das Volume behält die lokalen Aufgaben (siehe
+[Mit Docker](#mit-docker)):
+
+```bash
+docker run --rm -i -e ANTON_LOGIN_CODE -e ANTON_GROUP -v anton:/home/node/.config/anton udondan/anton
+```
 
 ### Einrichtung in Claude Code
 
@@ -444,6 +485,82 @@ claude mcp add --scope project --env ANTON_LOGIN_CODE=DEIN-CODE anton -- npx @ud
   }
 }
 ```
+
+**Mit Docker** — `-e NAME` ohne Wert reicht die Variable aus `env` an den
+Container weiter:
+
+```json
+{
+  "mcpServers": {
+    "anton": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "ANTON_LOGIN_CODE",
+        "-v",
+        "anton:/home/node/.config/anton",
+        "udondan/anton"
+      ],
+      "env": {
+        "ANTON_LOGIN_CODE": "DEIN-CODE"
+      }
+    }
+  }
+}
+```
+
+### Docker MCP Toolkit
+
+Mit dem [Docker MCP Toolkit](https://docs.docker.com/ai/mcp-catalog-and-toolkit/toolkit/)
+von Docker Desktop läuft der Server als Container hinter dem MCP Gateway. Das
+Gateway startet den Container bei Bedarf und reicht seine Tools an die
+verbundenen Clients weiter. Der Login-Code liegt als Secret in Docker Desktop
+statt im Klartext in der Client-Konfiguration. Die Gruppe lässt sich dort nicht
+voreinstellen; die Tools nehmen sie als Parameter `group`. Lokale Aufgaben
+(`assign_lesson` usw.) liegen nur im Container und gehen verloren, wenn das
+Gateway ihn neu startet.
+
+Voraussetzung ist Docker Desktop mit aktiviertem MCP Toolkit.
+
+1. Die Server-Definition
+   [`docker-mcp.yml`](https://github.com/udondan/anton/blob/main/docker-mcp.yml)
+   herunterladen und einem Toolkit-Profil hinzufügen. Das Toolkit liest solche
+   Dateien nur aus seinem Katalog-Verzeichnis:
+
+   ```bash
+   mkdir -p ~/.docker/mcp/catalogs
+   curl -fsSL https://raw.githubusercontent.com/udondan/anton/main/docker-mcp.yml -o ~/.docker/mcp/catalogs/anton.yml
+
+   # neues Profil "anton" ...
+   docker mcp profile create --name anton --id anton --server "file://$HOME/.docker/mcp/catalogs/anton.yml"
+   # ... oder einem bestehenden Profil hinzufügen
+   docker mcp profile server add default --server "file://$HOME/.docker/mcp/catalogs/anton.yml"
+   ```
+
+   Das Profil behält das Image in der Version, die es beim Hinzufügen hatte.
+   Zum Aktualisieren `profile server add` erneut ausführen.
+
+2. Den Login-Code als Secret hinterlegen:
+
+   ```bash
+   docker mcp secret set anton.login_code=DEIN-CODE
+   ```
+
+3. Einen Client mit dem Profil verbinden:
+
+   ```bash
+   docker mcp client connect claude-desktop --profile anton
+   ```
+
+   `docker mcp client connect --help` listet weitere Clients wie `claude-code`,
+   `cursor` oder `vscode`. Das geht auch in Docker Desktop unter _MCP Toolkit_.
+
+`docker mcp gateway run --profile anton --dry-run --verbose` prüft die
+Einrichtung, ohne einen Client zu starten; dabei meldet sich der Server bei
+anton.app an. Die Ausgabe sollte die Zeile `anton: (24 tools)` enthalten.
 
 ### Anwendungsbeispiele mit Claude
 
