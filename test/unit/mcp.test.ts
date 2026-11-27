@@ -99,6 +99,27 @@ describe('tools/list', () => {
       expect(tool.description).toBeTruthy();
     }
   });
+
+  it('gives every tool a title and annotations, and marks only the changes as writing', async () => {
+    const { tools } = await withClient((client) => client.listTools());
+    const writing = tools.filter((tool) => tool.annotations?.readOnlyHint === false);
+    expect(writing.map((tool) => tool.name).sort()).toEqual([
+      'assign_lesson',
+      'delete_assignment',
+      'pin_block',
+      'unpin_block',
+      'update_assignment',
+    ]);
+    for (const tool of tools) {
+      expect(tool.title).toBeTruthy();
+      expect(tool.annotations?.openWorldHint).toBe(false);
+    }
+    const destructive = writing.filter((tool) => tool.annotations?.destructiveHint === true);
+    expect(destructive.map((tool) => tool.name).sort()).toEqual([
+      'delete_assignment',
+      'unpin_block',
+    ]);
+  });
 });
 
 // [tool, arguments, Anton method, expected call arguments]
