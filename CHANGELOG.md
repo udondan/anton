@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/udondan/anton/compare/v1.5.0...v1.5.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* start the MCP server without credentials ([#166](https://github.com/udondan/anton/issues/166)) ([3e37fc1](https://github.com/udondan/anton/commit/3e37fc194b98d75af8d8adce100c504afda5dcc2))
+
 ## [1.5.0](https://github.com/udondan/anton/compare/v1.4.8...v1.5.0) (2026-11-27)
 
 
