@@ -1,0 +1,51 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.udondan/anton",
+  "title": "anton.app",
+  "description": "Unofficial anton.app parent tools: children's learning progress, lessons and assignments",
+  "version": "1.4.8",
+  "repository": {
+    "url": "https://github.com/udondan/anton",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@udondan/anton",
+      "version": "1.4.8",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "ANTON_LOGIN_CODE",
+          "description": "8-character parent login code from the anton app. Needed unless ANTON_LOG_ID or ~/.config/anton/config provides credentials.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "ANTON_LOG_ID",
+          "description": "Parent log ID (L-...), an alternative to ANTON_LOGIN_CODE",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "ANTON_GROUP",
+          "description": "Default group name when the parent belongs to several groups (case-insensitive)",
+          "isRequired": false
+        },
+        {
+          "name": "ANTON_ASSIGNMENTS_FILE",
+          "description": "Path of the local assignments file (default: ~/.config/anton/assignments.json)",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

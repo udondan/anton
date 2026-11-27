@@ -389,6 +389,8 @@ Der MCP-Server stellt alle 24 Tools über stdio bereit und ermöglicht KI-Assist
 > [!TIP]
 > **Alternative ohne MCP:** KI-Assistenten mit Terminalzugriff können direkt die CLI nutzen. Der [Agent Skill](#agent-skill-für-ki-assistenten) bringt ihnen die Befehle bei.
 
+In der [MCP Registry](https://registry.modelcontextprotocol.io/) ist der Server als `io.github.udondan/anton` gelistet.
+
 ### Einrichtung in Claude Code
 
 **Mit globaler Installation:**

@@ -21,7 +21,11 @@
     ".": {
       "release-type": "node",
       "include-component-in-tag": false,
-      "pull-request-title-pattern": "chore: release ${version}"
+      "pull-request-title-pattern": "chore: release ${version}",
+      "extra-files": [
+        { "type": "json", "path": "server.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "server.json", "jsonpath": "$.packages[0].version" }
+      ]
     }
   }
 }
