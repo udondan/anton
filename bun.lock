@@ -17,6 +17,7 @@
         "eslint": "10.15.0",
         "eslint-config-prettier": "10.1.8",
         "eslint-plugin-prettier": "5.5.7",
+        "mcp-tdqs": "0.2.0",
         "prettier": "3.10.1",
         "typescript": "6.0.3",
         "typescript-eslint": "8.74.0",
@@ -521,6 +522,8 @@
     "magicast": ["magicast@0.5.5", "", { "dependencies": { "@babel/parser": "^7.29.7", "@babel/types": "^7.29.7", "source-map-js": "^1.2.1" } }, "sha512-UicdXN8zQ3JHlxVq+28afMXPr1z7WNY6+7EJnzTdQWkTAlMLF5fNCCKxJHBQwGaNGR11581EiQmQzx73+MvszA=="],
 
     "math-intrinsics": ["math-intrinsics@1.1.0", "", {}, "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g=="],
+
+    "mcp-tdqs": ["mcp-tdqs@0.2.0", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.30.0", "safe-stable-stringify": "^2.5.0", "zod": "^4.5.4" }, "bin": { "tdqs": "bin/tdqs.js" } }, "sha512-AvXhE6G2FQQ4itIOWWgtGLRXyeyCz/HHX8eMJ5A7oWS8EmqfB0/rH9rcDI4Bs7DDmsjp0gnTabp+DZsMfrW/6A=="],
 
     "media-typer": ["media-typer@1.1.1", "", {}, "sha512-yz3xRaG20c6/BOzvYoDaGtPmGscs7YivItZEEqe6GbwNfHuxu9YNmvnEkMzKldAGY4/80pRcQRZSEnhquk9XuQ=="],
 
