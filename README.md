@@ -5,6 +5,7 @@
 [![npm](https://img.shields.io/npm/v/@udondan/anton)](https://www.npmjs.com/package/@udondan/anton)
 [![Docker](https://img.shields.io/docker/v/udondan/anton?sort=semver&label=docker)](https://hub.docker.com/r/udondan/anton)
 [![Node.js](https://img.shields.io/node/v/@udondan/anton)](https://www.npmjs.com/package/@udondan/anton)
+[![udondan/anton MCP server](https://glama.ai/mcp/servers/udondan/anton/badges/score.svg)](https://glama.ai/mcp/servers/udondan/anton)
 [![CI](https://github.com/udondan/anton/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/udondan/anton/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/udondan/anton/graph/badge.svg)](https://codecov.io/gh/udondan/anton)
 [![Maintainability](https://qlty.sh/gh/udondan/projects/anton/maintainability.svg)][qlty]
