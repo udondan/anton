@@ -3,7 +3,7 @@
   "name": "io.github.udondan/anton",
   "title": "anton.app",
   "description": "Unofficial anton.app parent tools: children's learning progress, lessons and assignments",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "repository": {
     "url": "https://github.com/udondan/anton",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "npm",
       "identifier": "@udondan/anton",
-      "version": "1.5.1",
+      "version": "1.6.0",
       "transport": {
         "type": "stdio"
       },

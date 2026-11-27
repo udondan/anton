@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/udondan/anton/compare/v1.5.1...v1.6.0) (2026-11-27)
+
+
+### Features
+
+* describe what each MCP tool returns and when to use it, with annotations ([#169](https://github.com/udondan/anton/issues/169)) ([c18e34f](https://github.com/udondan/anton/commit/c18e34f185f63bbfaf279a0cb8579404eb1d2bb4))
+
 ## [1.5.1](https://github.com/udondan/anton/compare/v1.5.0...v1.5.1) (2026-11-27)
 
 
