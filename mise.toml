@@ -1,0 +1,75 @@
+[tools]
+# Runtime and package manager. The only place for these versions: the workflows
+# install them with jdx/mise-action. Node stays on the same major as the Docker
+# base image, Bun on the version of the Bun image in the Dockerfile.
+node = "26"
+bun = "1.4.5"
+# Linters for the actions job in test.yml, which installs only these.
+actionlint = "1.7.12"
+# The runner's own shellcheck is older and reports differently. actionlint runs it over every `run:` block.
+shellcheck = "0.11.0"
+zizmor = "1.33.1"
+
+[tasks.install]
+description = "Install dependencies"
+run = "bun install"
+
+[tasks.build]
+description = "Compile TypeScript to dist/"
+run = "bun run build"
+
+[tasks.dev]
+description = "Watch mode — recompile on changes"
+run = "bun run dev"
+
+[tasks.test]
+description = "Run all tests (live API tests only with ANTON_LOGIN_CODE)"
+run = "bun run test"
+
+[tasks."test:coverage"]
+description = "Run all tests with coverage (100 % required)"
+run = "bun run test:coverage"
+
+[tasks."test:watch"]
+description = "Run tests in watch mode"
+run = "bun run test:watch"
+
+[tasks.lint]
+description = "Lint src/ and test/"
+run = "bun run lint"
+
+[tasks."lint:fix"]
+description = "Lint and auto-fix src/ and test/"
+run = "bun run lint:fix"
+
+[tasks.format]
+description = "Format src/ and test/ with Prettier"
+run = "bun run format"
+
+# ── Docker tasks ─────────────────────────────────────────────────────────────
+
+[tasks.docker-build]
+description = "Build the Docker image"
+run = "docker build -t udondan/anton ."
+# The image takes the compiled dist/, it doesn't compile TypeScript itself.
+depends = ["build"]
+
+[tasks.docker-register]
+description = "Add the server to a Docker MCP Toolkit profile (created if missing)"
+usage = 'arg "[profile]" default="anton" help="Profile ID"'
+# docker mcp only reads server files from its catalogs directory.
+run = """
+catalogs="$HOME/.docker/mcp/catalogs"
+mkdir -p "$catalogs"
+cp docker-mcp.yml "$catalogs/anton.yml"
+server="file://$catalogs/anton.yml"
+if docker mcp profile show "$usage_profile" >/dev/null 2>&1; then
+  docker mcp profile server add "$usage_profile" --server "$server"
+else
+  docker mcp profile create --name "$usage_profile" --id "$usage_profile" --server "$server"
+fi
+"""
+
+[tasks.docker]
+description = "Build the image and add it to a Docker MCP Toolkit profile"
+depends = ["docker-build", "docker-register"]

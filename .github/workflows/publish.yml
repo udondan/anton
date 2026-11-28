@@ -1,0 +1,180 @@
+---
+name: Publish
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ created ]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # No cache: a poisoned cache must not reach the published package.
+      # Trusted publishing (OIDC) needs no registry-url or token.
+      - name: Set up Node.js and Bun
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          install_args: node bun # versions from mise.toml
+          cache: false
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Publish
+        run: npm publish --access public --provenance
+
+  # Docker Hub has no OIDC for personal accounts, so this uses an access
+  # token, stored only in the environment `docker-hub`. Only releases have a
+  # version tag to derive the image tags from.
+  docker:
+    name: Publish to Docker Hub
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment:
+      name: docker-hub
+      url: https://hub.docker.com/r/udondan/anton
+    permissions:
+      contents: read
+      id-token: write # keyless cosign signature
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # The image takes the compiled dist/, it doesn't compile TypeScript itself.
+      - name: Set up Node.js and Bun
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          install_args: node bun # versions from mise.toml
+          cache: false
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Release tag v1.2.3 → 1.2.3, 1.2, 1 and latest.
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: udondan/anton
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+
+      - id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+
+      # Keyless: the signature names this workflow as signer, via GitHub OIDC
+      # and the public Sigstore log. Signing the digest covers all tags.
+      - name: Sign the image
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: cosign sign --yes "udondan/anton@${DIGEST}"
+
+  # Lists the server in the MCP Registry as io.github.udondan/anton. The
+  # registry checks mcpName in the package.json of the npm package, so this
+  # runs only after the package is published.
+  mcp-registry:
+    needs: publish
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # login to the MCP Registry via OIDC
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.16
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # release-please updates the versions in server.json with every release.
+      - name: Check version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(jq -r .version server.json)
+          package_version=$(jq -r '.packages[0].version' server.json)
+          if [[ "$version" != "${TAG#v}" || "$package_version" != "${TAG#v}" ]]; then
+            echo "::error::server.json has version $version (package $package_version), the release is $TAG"
+            exit 1
+          fi
+
+      # npm can take minutes to serve a new version, and the registry rejects
+      # a version it cannot find yet. Wait until npm serves it with mcpName.
+      - name: Wait for the npm package
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          name=$(jq -r .name server.json)
+          package=$(jq -r '.packages[0].identifier' server.json)
+          version=${TAG#v}
+          url="https://registry.npmjs.org/$(jq -rn --arg p "$package" '$p | @uri')/$version"
+          for _ in $(seq 30); do
+            if [[ "$(curl --fail --silent --location "$url" | jq -r .mcpName 2>/dev/null)" == "$name" ]]; then
+              echo "$package@$version is on npm"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::$package@$version with mcpName $name did not appear on npm within 15 minutes"
+          exit 1
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
+
+      - name: Download and verify mcp-publisher
+        run: |
+          set -euo pipefail
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          archive="mcp-publisher_${os}_${arch}.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Log in to the MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to the MCP Registry
+        run: ./mcp-publisher publish
